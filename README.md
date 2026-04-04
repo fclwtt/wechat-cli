@@ -39,6 +39,12 @@ npm install -g @canghe_ai/wechat-cli
 
 > Currently ships a **macOS arm64** binary. Other platforms can use the pip method below. PRs with additional platform binaries are welcome.
 
+**Update to the latest version:**
+
+```bash
+npm update -g @canghe_ai/wechat-cli
+```
+
 ### pip
 
 ```bash
@@ -102,6 +108,35 @@ If you have multiple WeChat accounts logged in locally, you'll be prompted to ch
 If you're unsure which WeChat account is currently active, navigate to the data folder and sort by modification date to find out:
 
 ![init-claude-code-4](image/init-claude-code-4.png)
+
+#### macOS: `task_for_pid failed` Error
+
+On some macOS systems, `init` may fail with `task_for_pid failed` even when running with `sudo`. This is due to macOS security restrictions on process memory access.
+
+**WeChat CLI will automatically attempt to fix this** by re-signing WeChat with the required entitlement. Just follow the on-screen instructions:
+
+1. The tool will re-sign WeChat automatically
+2. Quit WeChat completely (not just minimize)
+3. Reopen WeChat and log in
+4. Run `sudo wechat-cli init` again
+
+If auto re-signing fails, you can do it manually:
+
+```bash
+# Quit WeChat first, then:
+sudo codesign --force --sign - --entitlements /dev/stdin /Applications/WeChat.app <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.get-task-allow</key>
+    <true/>
+</dict>
+</plist>
+EOF
+```
+
+> Note: If WeChat auto-updates, you may need to re-sign it again.
 
 ### Step 2 — Use It
 

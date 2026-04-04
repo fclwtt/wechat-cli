@@ -39,6 +39,12 @@ npm install -g @canghe_ai/wechat-cli
 
 > 目前提供 **macOS arm64** 二进制。其他平台可使用下方 pip 安装。欢迎提交其他平台二进制 PR。
 
+**更新到最新版本：**
+
+```bash
+npm update -g @canghe_ai/wechat-cli
+```
+
 ### pip
 
 ```bash
@@ -101,7 +107,34 @@ wechat-cli init
 
 ![init-claude-code-4](image/init-claude-code-4.png)
 
+#### macOS 遇到 `task_for_pid failed` 错误？
 
+在某些 macOS 系统上，即使使用了 `sudo`，`init` 也可能报 `task_for_pid failed`。这是 macOS 的安全策略限制了进程内存访问。
+
+**WeChat CLI 会自动尝试修复此问题**——对微信重新签名以获取必要权限。按提示操作即可：
+
+1. 工具会自动对微信重新签名
+2. 完全退出微信（不是最小化）
+3. 重新打开微信并登录
+4. 再次执行 `sudo wechat-cli init`
+
+如果自动签名失败，可以手动执行：
+
+```bash
+# 先退出微信，然后：
+sudo codesign --force --sign - --entitlements /dev/stdin /Applications/WeChat.app <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.get-task-allow</key>
+    <true/>
+</dict>
+</plist>
+EOF
+```
+
+> 注意：如果微信自动更新了，可能需要重新执行签名。
 
 ### 第二步 — 开始使用
 
