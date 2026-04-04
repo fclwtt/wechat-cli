@@ -4,8 +4,21 @@ import os
 import platform
 import subprocess
 import sys
+import tempfile
 
 from .common import collect_db_files, cross_verify_keys, save_results, scan_memory_for_keys
+
+# Entitlements needed for task_for_pid to work on WeChat
+_ENTITLEMENTS_XML = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.get-task-allow</key>
+    <true/>
+</dict>
+</plist>
+"""
 
 
 def _find_binary():
@@ -39,6 +52,46 @@ def _find_binary():
     )
 
 
+def _resign_wechat():
+    """Re-sign WeChat with get-task-allow entitlement so task_for_pid works."""
+    wechat_paths = [
+        "/Applications/WeChat.app",
+        os.path.expanduser("~/Applications/WeChat.app"),
+    ]
+    wechat_app = None
+    for p in wechat_paths:
+        if os.path.isdir(p):
+            wechat_app = p
+            break
+
+    if wechat_app is None:
+        return False, "未找到 WeChat.app（已搜索 /Applications 和 ~/Applications）"
+
+    # Write entitlements to temp file
+    ent_fd, ent_path = tempfile.mkstemp(suffix=".xml")
+    try:
+        with os.fdopen(ent_fd, "w") as f:
+            f.write(_ENTITLEMENTS_XML)
+
+        print(f"\n[*] 检测到 task_for_pid 权限不足，正在对微信重新签名...")
+        print(f"    目标: {wechat_app}")
+
+        result = subprocess.run(
+            ["codesign", "--force", "--sign", "-", "--entitlements", ent_path, wechat_app],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    finally:
+        os.unlink(ent_path)
+
+    if result.returncode != 0:
+        return False, f"codesign 失败: {result.stderr.strip()}"
+
+    print("[+] 签名完成！请重新启动微信后再执行 init。")
+    return True, None
+
+
 def extract_keys(db_dir, output_path, pid=None):
     """通过 C 二进制提取 macOS 微信数据库密钥。
 
@@ -54,7 +107,6 @@ def extract_keys(db_dir, output_path, pid=None):
     Returns:
         dict: salt_hex -> enc_key_hex 映射
     """
-    import re
     import json
 
     binary = _find_binary()
@@ -89,14 +141,33 @@ def extract_keys(db_dir, output_path, pid=None):
     if result.stderr:
         print(result.stderr, file=sys.stderr)
 
+    # 检测 task_for_pid 失败 → 尝试 re-sign
+    combined_output = (result.stdout or "") + (result.stderr or "")
+    if "task_for_pid" in combined_output:
+        print("\n[!] task_for_pid 失败：macOS 安全策略阻止了进程内存访问。")
+        print("[!] 需要对微信重新签名以允许调试访问。")
+
+        ok, err = _resign_wechat()
+        if ok:
+            raise RuntimeError(
+                "已对微信重新签名。请执行以下步骤后重试：\n"
+                "  1. 退出微信（完全退出，不是最小化）\n"
+                "  2. 重新打开微信并登录\n"
+                "  3. 再次执行: sudo wechat-cli init"
+            )
+        else:
+            raise RuntimeError(
+                f"自动签名失败: {err}\n"
+                "请手动执行以下命令后重试：\n"
+                '  codesign --force --sign - --entitlements /dev/stdin /Applications/WeChat.app <<\'EOF\'\n'
+                + _ENTITLEMENTS_XML +
+                "EOF\n"
+                "然后重启微信，再执行: sudo wechat-cli init"
+            )
+
     # C 二进制输出 all_keys.json 到 work_dir
     c_output = os.path.join(work_dir, "all_keys.json")
     if not os.path.exists(c_output):
-        if "task_for_pid" in (result.stdout or "") + (result.stderr or ""):
-            raise RuntimeError(
-                "需要 root 权限才能读取微信进程内存。\n"
-                "请使用: sudo wechat-cli init"
-            )
         raise RuntimeError(
             "C 二进制未能生成密钥文件。\n"
             f"stdout: {result.stdout}\nstderr: {result.stderr}"
