@@ -27,7 +27,9 @@
 
 ---
 
-## 📥 安装
+## 📥 安装（给人类看）
+
+AI Agent 请直接移步到“安装（给 Agent 看）”
 
 ### npm（推荐）
 
@@ -55,6 +57,20 @@ pip install -e .
 
 ---
 
+## 📥 安装（给 Agent 看）
+
+直接将在你的 Claude Code 或者 OpenClaw 中输入以下提示即可：
+
+```bash
+帮我配置并安装：npm install -g @canghe_ai/wechat-cli
+```
+
+比如在 Claude Code 中输入：
+
+![install-claude-code-1](image/install-claude-code-1.png)
+
+注意：请先确保有 node.js 环境。没雨可以让你的 cc 安装环境。
+
 ## 🚀 快速开始
 
 ### 第一步 — 初始化
@@ -70,6 +86,22 @@ wechat-cli init
 ```
 
 这一步会自动检测微信数据目录、提取加密密钥，并保存到 `~/.wechat-cli/`。
+
+![init-claude-code-1](image/init-claude-code-1.png)
+
+如果是 mac，需要执行 sudo 命令，然后需要输入密码：
+
+![init-claude-code-code-2](image/init-claude-code-2.png)
+
+特别注意，如果你本地有登录微信多个账号，会有多份数据需要你做选择，选择你当前登录的微信账号（默认是第一个）：
+
+![init-claude-code-3](image/init-claude-code-3.png)
+
+这里不确定自己现在的登录微信号，可以找到该文件夹，然后按照修改时间排序，你就可以看到了。（）
+
+![init-claude-code-4](image/init-claude-code-4.png)
+
+
 
 ### 第二步 — 开始使用
 
