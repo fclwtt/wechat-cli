@@ -371,6 +371,12 @@ This project is a local data query tool for personal use only. Please note:
 
 ---
 
+## 🙏 Acknowledgements
+
+This project is built on top of [wechat-decrypt](https://github.com/ylytdeng/wechat-decrypt), which provides the core WeChat database decryption and data parsing capabilities.
+
+---
+
 ## ⭐ Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=freestylefly/wechat-cli&type=Date)](https://star-history.com/#freestylefly/wechat-cli&Date)

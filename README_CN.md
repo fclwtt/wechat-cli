@@ -369,6 +369,12 @@ wechat-cli new-messages                    # 后续: 仅返回上次以来的新
 
 ---
 
+## 🙏 致谢
+
+本项目基于 [wechat-decrypt](https://github.com/ylytdeng/wechat-decrypt) 开发，该仓库提供了微信数据库解密和数据解析的核心能力。
+
+---
+
 ## ⭐ Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=freestylefly/wechat-cli&type=Date)](https://star-history.com/#freestylefly/wechat-cli&Date)
