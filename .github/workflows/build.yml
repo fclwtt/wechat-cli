@@ -66,6 +66,7 @@ jobs:
             --hidden-import=wechat_cli.commands.unread `
             --hidden-import=wechat_cli.commands.favorites `
             --hidden-import=wechat_cli.commands.export_html `
+            --hidden-import=wechat_cli.commands.export_all_html `
             --collect-all wechat_cli `
             --hidden-import=Crypto `
             --hidden-import=Crypto.Cipher `
@@ -102,6 +103,7 @@ jobs:
             --hidden-import=wechat_cli.commands.unread \
             --hidden-import=wechat_cli.commands.favorites \
             --hidden-import=wechat_cli.commands.export_html \
+            --hidden-import=wechat_cli.commands.export_all_html \
             --collect-all wechat_cli \
             --hidden-import=Crypto \
             --hidden-import=Crypto.Cipher \

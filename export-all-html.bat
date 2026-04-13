@@ -1,8 +1,6 @@
 @echo off
 chcp 65001 >nul
-REM 微信聊天记录 HTML 导出工具
-
-setlocal enabledelayedexpansion
+REM 微信聊天记录一键导出工具
 
 echo ============================================================
 echo   WeChat Chat Export Tool (HTML)
@@ -35,61 +33,10 @@ echo Tool: %CLI_PATH%
 echo Output: %OUTPUT_DIR%
 echo.
 
-if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
-
-echo [1/2] Getting chat list...
-"%CLI_PATH%" sessions --format text > "%OUTPUT_DIR%\sessions_temp.txt" 2>nul
-
-if not exist "%OUTPUT_DIR%\sessions_temp.txt" (
-    echo [ERROR] Failed to get sessions
-    pause
-    exit /b 1
-)
-
-set count=0
-for /f "skip=1 tokens=*" %%a in ('type "%OUTPUT_DIR%\sessions_temp.txt"') do (
-    set /a count+=1
-)
-echo Found %count% chats
-echo.
-
-if %count% equ 0 (
-    echo [WARNING] No chats found
-    echo Please check:
-    echo   1. WeChat is running and logged in
-    echo   2. wechat-cli.exe init was run successfully
-    del "%OUTPUT_DIR%\sessions_temp.txt" 2>nul
-    pause
-    exit /b 0
-)
-
-echo [2/2] Exporting chats...
-set exported=0
-
-for /f "skip=1 tokens=1" %%a in ('type "%OUTPUT_DIR%\sessions_temp.txt"') do (
-    set "chat_name=%%a"
-    echo   Exporting: !chat_name!
-    "%CLI_PATH%" export-html "!chat_name!" --output "%OUTPUT_DIR%" --copy-media 2>nul
-    if !errorlevel! equ 0 (
-        set /a exported+=1
-    )
-)
-
-del "%OUTPUT_DIR%\sessions_temp.txt" 2>nul
+REM 运行导出命令
+"%CLI_PATH%" export-all-html --output "%OUTPUT_DIR%" --copy-media --limit 2000 --max-chats 100
 
 echo.
-echo ============================================================
-echo   Export Complete
-echo ============================================================
-echo.
-echo Exported: %exported% chats
-echo Output: %OUTPUT_DIR%
-echo.
-echo Usage:
-echo   1. Open folder: %OUTPUT_DIR%
-echo   2. Enter any chat folder
-echo   3. Double-click index.html to view
-echo.
-
+echo Opening output folder...
 explorer "%OUTPUT_DIR%"
 pause
