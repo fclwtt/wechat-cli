@@ -110,7 +110,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wechat-cli-${{ matrix.platform }}
-          path: dist/wechat-cli${{ matrix.ext }}
+          path: |
+            dist/wechat-cli${{ matrix.ext }}
+            export-all-html.bat
+            export-daily-html.bat
 
   release:
     needs: build
