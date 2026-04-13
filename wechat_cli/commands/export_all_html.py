@@ -81,7 +81,7 @@ def export_all_html(ctx, output_path, limit, copy_media, max_chats):
         
         try:
             # 解析聊天上下文
-            chat_ctx = resolve_chat_context(username, None, app.cache, app.decrypted_dir)
+            chat_ctx = resolve_chat_context(username, app.msg_db_keys, app.cache, app.decrypted_dir)
             if not chat_ctx or not chat_ctx.get('db_path'):
                 click.echo(f"    跳过: 找不到聊天记录")
                 continue
