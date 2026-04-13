@@ -7,7 +7,7 @@ from contextlib import closing
 from pathlib import Path
 
 from ..core.config import ACCOUNTS_DIR, list_accounts, load_account_config
-from ..core.cache import EncryptedCache
+from ..core.db_cache import DBCache
 from ..core.contacts import get_contact_names
 from ..core.messages import resolve_chat_context
 
@@ -78,11 +78,15 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats):
     keys_file = cfg["keys_file"]
     decrypted_dir = cfg.get("decrypted_dir", os.path.join(ACCOUNTS_DIR, wxid, "decrypted"))
 
+    # 加载密钥
+    keys_json = json.load(open(keys_file))
+    from ..core.key_utils import strip_key_metadata
+    all_keys = strip_key_metadata(keys_json)
+    
     # 初始化 cache
-    cache = EncryptedCache(db_dir, keys_file)
+    cache = DBCache(all_keys, db_dir)
 
     # 获取 msg_db_keys
-    keys_json = json.load(open(keys_file))
     msg_db_keys = [k for k in keys_json.keys() if k.startswith("message/")]
 
     # 获取联系人
