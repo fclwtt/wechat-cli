@@ -103,7 +103,6 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit, copy_m
 def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts, limit, db_dir=None, copy_media=False, media_dir=None):
     """收集消息详情，包含媒体处理"""
     from ..core.messages import _iter_table_contexts, _query_messages, _format_message_text
-    from ..core.crypto import decrypt_image_dat
     import hashlib
 
     messages = []
