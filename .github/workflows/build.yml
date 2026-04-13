@@ -71,7 +71,7 @@ jobs:
             --hidden-import=zstandard `
             --exclude-module=wechat_cli.keys.scanner_macos `
             --exclude-module=wechat_cli.keys.scanner_linux `
-            wechat_cli/main.py
+            entry.py
 
       - name: Build with PyInstaller (macOS/Linux)
         if: matrix.platform != 'windows'
@@ -104,7 +104,7 @@ jobs:
             --hidden-import=Crypto.Cipher.AES \
             --hidden-import=zstandard \
             ${{ matrix.platform == 'macos' && '--exclude-module=wechat_cli.keys.scanner_windows --exclude-module=wechat_cli.keys.scanner_linux' || '--exclude-module=wechat_cli.keys.scanner_macos --exclude-module=wechat_cli.keys.scanner_windows' }} \
-            wechat_cli/main.py
+            entry.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
