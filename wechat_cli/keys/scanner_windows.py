@@ -60,7 +60,7 @@ def _get_all_db_dirs():
 
 
 def _extract_wxid_from_db_dir(db_dir):
-    """从 db_dir 路径提取 wxid
+    r"""从 db_dir 路径提取 wxid
     例如: D:\WechatMsg\xwechat_files\tutou136589502_cf9f\db_storage
     返回: tutou136589502_cf9f
     """
@@ -132,7 +132,11 @@ def extract_all_accounts_keys(output_base_dir):
         except Exception as e:
             print(f"[!] {wxid}: 提取失败 - {e}")
     
-    return accounts"
+    return accounts
+
+
+def _get_pids():
+    """返回所有 Weixin.exe 进程的 (pid, mem_kb) 列表"""
     r = subprocess.run(["tasklist", "/FI", "IMAGENAME eq Weixin.exe", "/FO", "CSV", "/NH"],
                        capture_output=True, text=True)
     pids = []
