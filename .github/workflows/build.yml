@@ -1,0 +1,130 @@
+name: Build Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            platform: windows
+            ext: .exe
+          - os: macos-latest
+            platform: macos
+            ext: ''
+          - os: ubuntu-latest
+            platform: linux
+            ext: ''
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install .
+
+      - name: Build with PyInstaller (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          pyinstaller --onefile --name wechat-cli `
+            --hidden-import=wechat_cli `
+            --hidden-import=wechat_cli.main `
+            --hidden-import=wechat_cli.core `
+            --hidden-import=wechat_cli.core.config `
+            --hidden-import=wechat_cli.core.context `
+            --hidden-import=wechat_cli.core.crypto `
+            --hidden-import=wechat_cli.core.messages `
+            --hidden-import=wechat_cli.core.contacts `
+            --hidden-import=wechat_cli.keys `
+            --hidden-import=wechat_cli.keys.scanner_windows `
+            --hidden-import=wechat_cli.keys.common `
+            --hidden-import=wechat_cli.commands `
+            --hidden-import=wechat_cli.commands.init `
+            --hidden-import=wechat_cli.commands.sessions `
+            --hidden-import=wechat_cli.commands.history `
+            --hidden-import=wechat_cli.commands.search `
+            --hidden-import=wechat_cli.commands.contacts `
+            --hidden-import=wechat_cli.commands.new_messages `
+            --hidden-import=wechat_cli.commands.members `
+            --hidden-import=wechat_cli.commands.export `
+            --hidden-import=wechat_cli.commands.stats `
+            --hidden-import=wechat_cli.commands.unread `
+            --hidden-import=wechat_cli.commands.favorites `
+            --hidden-import=Crypto `
+            --hidden-import=Crypto.Cipher `
+            --hidden-import=Crypto.Cipher.AES `
+            --hidden-import=zstandard `
+            --exclude-module=wechat_cli.keys.scanner_macos `
+            --exclude-module=wechat_cli.keys.scanner_linux `
+            wechat_cli/main.py
+
+      - name: Build with PyInstaller (macOS/Linux)
+        if: matrix.platform != 'windows'
+        run: |
+          pyinstaller --onefile --name wechat-cli \
+            --hidden-import=wechat_cli \
+            --hidden-import=wechat_cli.main \
+            --hidden-import=wechat_cli.core \
+            --hidden-import=wechat_cli.core.config \
+            --hidden-import=wechat_cli.core.context \
+            --hidden-import=wechat_cli.core.crypto \
+            --hidden-import=wechat_cli.core.messages \
+            --hidden-import=wechat_cli.core.contacts \
+            --hidden-import=wechat_cli.keys \
+            --hidden-import=wechat_cli.keys.common \
+            --hidden-import=wechat_cli.commands \
+            --hidden-import=wechat_cli.commands.init \
+            --hidden-import=wechat_cli.commands.sessions \
+            --hidden-import=wechat_cli.commands.history \
+            --hidden-import=wechat_cli.commands.search \
+            --hidden-import=wechat_cli.commands.contacts \
+            --hidden-import=wechat_cli.commands.new_messages \
+            --hidden-import=wechat_cli.commands.members \
+            --hidden-import=wechat_cli.commands.export \
+            --hidden-import=wechat_cli.commands.stats \
+            --hidden-import=wechat_cli.commands.unread \
+            --hidden-import=wechat_cli.commands.favorites \
+            --hidden-import=Crypto \
+            --hidden-import=Crypto.Cipher \
+            --hidden-import=Crypto.Cipher.AES \
+            --hidden-import=zstandard \
+            ${{ matrix.platform == 'macos' && '--exclude-module=wechat_cli.keys.scanner_windows --exclude-module=wechat_cli.keys.scanner_linux' || '--exclude-module=wechat_cli.keys.scanner_macos --exclude-module=wechat_cli.keys.scanner_windows' }} \
+            wechat_cli/main.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wechat-cli-${{ matrix.platform }}
+          path: dist/wechat-cli${{ matrix.ext }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
