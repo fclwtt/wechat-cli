@@ -17,7 +17,9 @@ from ..core.messages import resolve_chat_context
 @click.option("--limit", default=2000, help="每个聊天导出的消息数量")
 @click.option("--copy-media", is_flag=True, help="复制图片/文件到输出目录")
 @click.option("--max-chats", default=100, help="每个账号最多导出多少个聊天")
-def export_all_accounts(output_path, limit, copy_media, max_chats):
+@click.option("--start-time", default=None, help="开始时间 (YYYY-MM-DD)")
+@click.option("--end-time", default=None, help="结束时间 (YYYY-MM-DD)")
+def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, end_time):
     """导出所有账号的聊天记录为 HTML 页面
 
     \b
@@ -25,12 +27,24 @@ def export_all_accounts(output_path, limit, copy_media, max_chats):
       wechat-cli export-all-accounts                     # 导出到 ~/wechat-chats-backup/
       wechat-cli export-all-accounts --output ~/backup   # 导出到指定目录
       wechat-cli export-all-accounts --copy-media        # 同时复制媒体文件
+      wechat-cli export-all-accounts --start-time 2026-04-12 --end-time 2026-04-12  # 每日导出
     """
     # 获取所有账号
     accounts = list_accounts()
     if not accounts:
         click.echo("错误: 未找到任何账号,请先运行 wechat-cli init --all", err=True)
         exit(1)
+
+    # 解析时间范围
+    start_ts, end_ts = None, None
+    if start_time or end_time:
+        from datetime import datetime
+        if start_time:
+            start_ts = int(datetime.strptime(start_time, "%Y-%m-%d").timestamp())
+        if end_time:
+            # 结束时间设为当天 23:59:59
+            end_dt = datetime.strptime(end_time, "%Y-%m-%d")
+            end_ts = int(end_dt.replace(hour=23, minute=59, second=59).timestamp())
 
     # 确定输出目录
     if output_path:
@@ -45,6 +59,8 @@ def export_all_accounts(output_path, limit, copy_media, max_chats):
     click.echo("=" * 60)
     click.echo(f"账号数: {len(accounts)}")
     click.echo(f"输出目录: {output_dir}")
+    if start_ts or end_ts:
+        click.echo(f"时间范围: {start_time or '最早'} 至 {end_time or '最新'}")
     click.echo("")
 
     for wxid in accounts:
@@ -52,7 +68,7 @@ def export_all_accounts(output_path, limit, copy_media, max_chats):
         click.echo("-" * 40)
 
         try:
-            _export_account(wxid, output_dir, limit, copy_media, max_chats)
+            _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts, end_ts)
         except Exception as e:
             click.echo(f"  导出失败: {e}", err=True)
 
@@ -67,7 +83,7 @@ def export_all_accounts(output_path, limit, copy_media, max_chats):
     click.echo("  2. 进入账号目录 → 聊天目录 → 双击 index.html")
 
 
-def _export_account(wxid, output_dir, limit, copy_media, max_chats):
+def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=None, end_ts=None):
     """导出单个账号的所有聊天"""
     import json
     from .export_html import _collect_message_details, _generate_html, _generate_markdown
@@ -82,7 +98,7 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats):
     keys_json = json.load(open(keys_file))
     from ..core.key_utils import strip_key_metadata
     all_keys = strip_key_metadata(keys_json)
-    
+
     # 初始化 cache
     cache = DBCache(all_keys, db_dir)
 
@@ -155,7 +171,7 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats):
             # 收集消息详情
             messages = _collect_message_details(
                 chat_ctx, names, display_name_fn,
-                start_ts=None, end_ts=None, limit=limit,
+                start_ts=start_ts, end_ts=end_ts, limit=limit,
                 db_dir=db_dir, copy_media=copy_media, media_dir=media_dir
             )
 
@@ -167,7 +183,8 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats):
             html_content = _generate_html(
                 chat_ctx['display_name'],
                 chat_ctx['is_group'],
-                "最早", "最新",
+                start_time or "最早",
+                end_time or "最新",
                 messages,
                 copy_media
             )
@@ -180,7 +197,8 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats):
             md_content = _generate_markdown(
                 chat_ctx['display_name'],
                 chat_ctx['is_group'],
-                "最早", "最新",
+                start_time or "最早",
+                end_time or "最新",
                 messages,
                 copy_media
             )

@@ -266,10 +266,11 @@ def _parse_content(content, base_type, sub_type):
 
 
 def _resolve_media_path(db_dir, content, base_type, create_time, chat_username=None):
-    """解析媒体文件路径"""
+    """解析媒体文件路径，返回具体文件路径"""
     from datetime import datetime
     import hashlib
     import xml.etree.ElementTree as ET
+    import glob
 
     if not db_dir:
         return None
@@ -282,6 +283,7 @@ def _resolve_media_path(db_dir, content, base_type, create_time, chat_username=N
 
     dt = datetime.fromtimestamp(create_time)
     date_prefix = dt.strftime("%Y-%m")
+    date_prefix2 = dt.strftime("%Y%m")  # 有些目录用这种格式
 
     # 文件
     if base_type == 49 and content:
@@ -305,7 +307,7 @@ def _resolve_media_path(db_dir, content, base_type, create_time, chat_username=N
         except:
             pass
 
-    # 图片
+    # 图片 - 需要匹配具体文件
     if base_type == 3:
         attach_dir = msg_dir / "attach"
         if attach_dir.exists():
@@ -316,21 +318,106 @@ def _resolve_media_path(db_dir, content, base_type, create_time, chat_username=N
                 if user_attach.exists():
                     img_dir = user_attach / date_prefix / "Img"
                     if img_dir.exists():
-                        # 返回目录（无法精确匹配具体文件）
-                        return str(img_dir)
+                        # 用时间戳匹配具体文件
+                        return _find_image_by_time(img_dir, create_time)
 
             # 搜索所有目录
             for d in attach_dir.iterdir():
                 if d.is_dir():
                     img_dir = d / date_prefix / "Img"
                     if img_dir.exists():
-                        return str(img_dir)
+                        result = _find_image_by_time(img_dir, create_time)
+                        if result:
+                            return result
 
-    # 视频
+    # 视频 - 需要匹配具体文件
     if base_type == 43:
         video_dir = msg_dir / "video" / date_prefix
         if video_dir.exists():
-            return str(video_dir)
+            # 用时间戳匹配具体文件
+            return _find_video_by_time(video_dir, create_time)
+
+        # 尝试其他格式
+        video_dir2 = msg_dir / "video" / date_prefix2
+        if video_dir2.exists():
+            return _find_video_by_time(video_dir2, create_time)
+
+    return None
+
+
+def _find_image_by_time(img_dir, create_time):
+    """根据时间戳查找图片文件"""
+    # 查找所有 .dat 文件（微信加密图片）
+    dat_files = list(img_dir.glob("*.dat"))
+    if not dat_files:
+        # 也查找 .jpg, .png 等
+        dat_files = list(img_dir.glob("*.*"))
+
+    if not dat_files:
+        return None
+
+    # 找时间最近的文件
+    dt = datetime.fromtimestamp(create_time)
+    target_time = dt.timestamp()
+
+    best_file = None
+    best_diff = float('inf')
+
+    for f in dat_files:
+        try:
+            # 文件名可能包含时间戳信息
+            # 或者用文件修改时间匹配
+            file_mtime = f.stat().st_mtime
+            diff = abs(file_mtime - target_time)
+            if diff < best_diff:
+                best_diff = diff
+                best_file = f
+        except:
+            pass
+
+    # 如果时间差在 60 秒内，返回该文件
+    if best_file and best_diff < 60:
+        return str(best_file)
+
+    # 否则返回第一个文件（如果只有一个）
+    if len(dat_files) == 1:
+        return str(dat_files[0])
+
+    return None
+
+
+def _find_video_by_time(video_dir, create_time):
+    """根据时间戳查找视频文件"""
+    # 查找所有视频文件
+    video_files = list(video_dir.glob("*.mp4")) + list(video_dir.glob("*.avi"))
+
+    if not video_files:
+        return None
+
+    # 找时间最近的文件
+    dt = datetime.fromtimestamp(create_time)
+    target_time = dt.timestamp()
+
+    best_file = None
+    best_diff = float('inf')
+
+    for f in video_files:
+        try:
+            file_mtime = f.stat().st_mtime
+            diff = abs(file_mtime - target_time)
+            if diff < best_diff:
+                best_diff = diff
+                best_file = f
+        except:
+            pass
+
+    # 如果时间差在 60 秒内，返回该文件
+    if best_file and best_diff < 60:
+        return str(best_file)
+
+    # 否则返回第一个文件
+    if len(video_files) == 1:
+        return str(video_files[0])
 
     return None
 
