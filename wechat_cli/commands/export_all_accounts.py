@@ -1,0 +1,196 @@
+"""export-all-accounts 命令 - 导出所有账号的聊天记录"""
+
+import click
+import os
+import sqlite3
+from contextlib import closing
+from pathlib import Path
+
+from ..core.config import ACCOUNTS_DIR, list_accounts, load_account_config
+from ..core.cache import EncryptedCache
+from ..core.contacts import get_contact_names
+from ..core.messages import resolve_chat_context
+
+
+@click.command("export-all-accounts")
+@click.option("--output", "output_path", default=None, help="输出目录路径")
+@click.option("--limit", default=2000, help="每个聊天导出的消息数量")
+@click.option("--copy-media", is_flag=True, help="复制图片/文件到输出目录")
+@click.option("--max-chats", default=100, help="每个账号最多导出多少个聊天")
+def export_all_accounts(output_path, limit, copy_media, max_chats):
+    """导出所有账号的聊天记录为 HTML 页面
+
+    \b
+    示例:
+      wechat-cli export-all-accounts                     # 导出到 ~/wechat-chats-backup/
+      wechat-cli export-all-accounts --output ~/backup   # 导出到指定目录
+      wechat-cli export-all-accounts --copy-media        # 同时复制媒体文件
+    """
+    # 获取所有账号
+    accounts = list_accounts()
+    if not accounts:
+        click.echo("错误: 未找到任何账号,请先运行 wechat-cli init --all", err=True)
+        exit(1)
+
+    # 确定输出目录
+    if output_path:
+        output_dir = Path(output_path)
+    else:
+        output_dir = Path.home() / "wechat-chats-backup"
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    click.echo("=" * 60)
+    click.echo("  导出所有账号聊天记录")
+    click.echo("=" * 60)
+    click.echo(f"账号数: {len(accounts)}")
+    click.echo(f"输出目录: {output_dir}")
+    click.echo("")
+
+    for wxid in accounts:
+        click.echo(f"\n[账号] {wxid}")
+        click.echo("-" * 40)
+
+        try:
+            _export_account(wxid, output_dir, limit, copy_media, max_chats)
+        except Exception as e:
+            click.echo(f"  导出失败: {e}", err=True)
+
+    click.echo("")
+    click.echo("=" * 60)
+    click.echo("全部导出完成")
+    click.echo("=" * 60)
+    click.echo(f"输出: {output_dir}")
+    click.echo("")
+    click.echo("使用方法:")
+    click.echo(f"  1. 打开文件夹: {output_dir}")
+    click.echo("  2. 进入账号目录 → 聊天目录 → 双击 index.html")
+
+
+def _export_account(wxid, output_dir, limit, copy_media, max_chats):
+    """导出单个账号的所有聊天"""
+    import json
+    from .export_html import _collect_message_details, _generate_html, _generate_markdown
+
+    # 加载配置
+    cfg = load_account_config(wxid)
+    db_dir = cfg["db_dir"]
+    keys_file = cfg["keys_file"]
+    decrypted_dir = cfg.get("decrypted_dir", os.path.join(ACCOUNTS_DIR, wxid, "decrypted"))
+
+    # 初始化 cache
+    cache = EncryptedCache(db_dir, keys_file)
+
+    # 获取 msg_db_keys
+    keys_json = json.load(open(keys_file))
+    msg_db_keys = [k for k in keys_json.keys() if k.startswith("message/")]
+
+    # 获取联系人
+    names = get_contact_names(cache, decrypted_dir)
+
+    # 显示名称函数
+    def display_name_fn(sender_id, names_dict):
+        return names_dict.get(sender_id, sender_id or "我")
+
+    # 获取所有会话
+    session_db = cache.get(os.path.join("session", "session.db"))
+    if not session_db:
+        click.echo("  错误: 无法解密 session.db", err=True)
+        return
+
+    with closing(sqlite3.connect(session_db)) as conn:
+        rows = conn.execute("""
+            SELECT username, last_timestamp
+            FROM SessionTable
+            WHERE last_timestamp > 0
+            ORDER BY last_timestamp DESC
+            LIMIT ?
+        """, (max_chats,)).fetchall()
+
+    total = len(rows)
+    click.echo(f"  [1/2] 找到 {total} 个会话")
+
+    if total == 0:
+        click.echo("  没有找到任何会话")
+        return
+
+    # 账号输出目录
+    account_output_dir = output_dir / wxid
+    account_output_dir.mkdir(parents=True, exist_ok=True)
+
+    exported = 0
+    failed = 0
+
+    click.echo("  [2/2] 开始导出...")
+
+    for i, (username, ts) in enumerate(rows, 1):
+        display_name = names.get(username, username)
+
+        # 清理显示名称(用于文件名)
+        safe_name = display_name.replace('/', '_').replace('\\', '_').replace(':', '_')
+        chat_dir = account_output_dir / safe_name
+
+        click.echo(f"    [{i}/{total}] {display_name}")
+
+        try:
+            # 解析聊天上下文
+            chat_ctx = resolve_chat_context(username, msg_db_keys, cache, decrypted_dir)
+            if not chat_ctx or not chat_ctx.get('db_path'):
+                click.echo(f"      跳过: 找不到聊天记录")
+                continue
+
+            # 创建聊天目录
+            chat_dir.mkdir(parents=True, exist_ok=True)
+
+            # 媒体目录
+            media_dir = None
+            if copy_media:
+                media_dir = chat_dir / "media"
+                media_dir.mkdir(exist_ok=True)
+
+            # 收集消息详情
+            messages = _collect_message_details(
+                chat_ctx, names, display_name_fn,
+                start_ts=None, end_ts=None, limit=limit,
+                db_dir=db_dir, copy_media=copy_media, media_dir=media_dir
+            )
+
+            if not messages:
+                click.echo(f"      跳过: 无消息")
+                continue
+
+            # 生成 HTML
+            html_content = _generate_html(
+                chat_ctx['display_name'],
+                chat_ctx['is_group'],
+                "最早", "最新",
+                messages,
+                copy_media
+            )
+
+            # 写入 HTML 文件
+            html_path = chat_dir / "index.html"
+            html_path.write_text(html_content, encoding="utf-8")
+
+            # 生成 Markdown
+            md_content = _generate_markdown(
+                chat_ctx['display_name'],
+                chat_ctx['is_group'],
+                "最早", "最新",
+                messages,
+                copy_media
+            )
+
+            # 写入 Markdown 文件
+            md_path = chat_dir / "index.md"
+            md_path.write_text(md_content, encoding="utf-8")
+
+            exported += 1
+
+        except Exception as e:
+            click.echo(f"      失败: {e}")
+            failed += 1
+
+    click.echo("")
+    click.echo(f"  成功: {exported} 个聊天")
+    click.echo(f"  失败: {failed} 个聊天")

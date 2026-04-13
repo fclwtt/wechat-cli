@@ -20,6 +20,10 @@ STATE_DIR = os.path.expanduser("~/.wechat-cli")
 CONFIG_FILE = os.path.join(STATE_DIR, "config.json")
 KEYS_FILE = os.path.join(STATE_DIR, "all_keys.json")
 
+# 多账号目录
+ACCOUNTS_DIR = os.path.join(STATE_DIR, "accounts")
+ACCOUNTS_INDEX_FILE = os.path.join(STATE_DIR, "accounts.json")
+
 
 def _choose_candidate(candidates):
     if len(candidates) == 1:
@@ -190,3 +194,53 @@ def load_config(config_path=None):
         cfg["wechat_base_dir"] = db_dir
 
     return cfg
+
+
+def load_account_config(wxid):
+    """加载指定账号的配置。
+
+    Args:
+        wxid: 账号 ID（如 tutou136589502_cf9f）
+
+    Returns:
+        dict: 账号配置，包含 db_dir, keys_file 等
+    """
+    account_dir = os.path.join(ACCOUNTS_DIR, wxid)
+    config_file = os.path.join(account_dir, "config.json")
+    keys_file = os.path.join(account_dir, "keys.json")
+    
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f"账号 {wxid} 未初始化")
+    
+    with open(config_file, encoding="utf-8") as f:
+        cfg = json.load(f)
+    
+    cfg["keys_file"] = keys_file
+    cfg.setdefault("decrypted_dir", os.path.join(account_dir, "decrypted"))
+    cfg.setdefault("decoded_image_dir", os.path.join(account_dir, "decoded_images"))
+    cfg.setdefault("wechat_process", _DEFAULT_PROCESS)
+    
+    # 推导微信数据根目录
+    db_dir = cfg.get("db_dir", "")
+    if db_dir and os.path.basename(db_dir) == "db_storage":
+        cfg["wechat_base_dir"] = os.path.dirname(db_dir)
+    else:
+        cfg["wechat_base_dir"] = db_dir
+    
+    return cfg
+
+
+def list_accounts():
+    """列出所有已初始化的账号。
+
+    Returns:
+        list: [wxid1, wxid2, ...]
+    """
+    if not os.path.exists(ACCOUNTS_INDEX_FILE):
+        return []
+    
+    try:
+        with open(ACCOUNTS_INDEX_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return []

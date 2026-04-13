@@ -3,6 +3,7 @@
 import ctypes
 import ctypes.wintypes as wt
 import functools
+import glob
 import os
 import re
 import subprocess
@@ -26,8 +27,112 @@ class MBI(ctypes.Structure):
     ]
 
 
-def _get_pids():
-    """返回所有 Weixin.exe 进程的 (pid, mem_kb) 列表，按内存降序"""
+def _get_all_db_dirs():
+    """返回所有微信账号的 db_dir 列表"""
+    appdata = os.environ.get("APPDATA", "")
+    config_dir = os.path.join(appdata, "Tencent", "xwechat", "config")
+    if not os.path.isdir(config_dir):
+        return []
+    
+    db_dirs = []
+    for ini_file in glob.glob(os.path.join(config_dir, "*.ini")):
+        try:
+            content = None
+            for enc in ("utf-8", "gbk"):
+                try:
+                    with open(ini_file, "r", encoding=enc) as f:
+                        content = f.read(1024).strip()
+                    break
+                except UnicodeDecodeError:
+                    continue
+            if not content or any(c in content for c in "\n\r\x00"):
+                continue
+            if os.path.isdir(content):
+                # 查找该目录下的所有 db_storage
+                pattern = os.path.join(content, "xwechat_files", "*", "db_storage")
+                for match in glob.glob(pattern):
+                    if os.path.isdir(match):
+                        db_dirs.append(match)
+        except OSError:
+            continue
+    
+    return db_dirs
+
+
+def _extract_wxid_from_db_dir(db_dir):
+    """从 db_dir 路径提取 wxid
+    例如: D:\WechatMsg\xwechat_files\tutou136589502_cf9f\db_storage
+    返回: tutou136589502_cf9f
+    """
+    parts = db_dir.replace("\\", "/").split("/")
+    for i, part in enumerate(parts):
+        if part == "xwechat_files" and i + 1 < len(parts):
+            return parts[i + 1]
+    # 最后一个非 db_storage 的目录名
+    for part in reversed(parts):
+        if part and part != "db_storage":
+            return part
+    return "unknown"
+
+
+def extract_all_accounts_keys(output_base_dir):
+    """提取所有微信账号的密钥。
+
+    Args:
+        output_base_dir: ~/.wechat-cli/accounts/ 目录
+
+    Returns:
+        list: [{"wxid": ..., "db_dir": ..., "keys_file": ...}, ...]
+    """
+    print("=" * 60)
+    print("  提取所有微信账号密钥")
+    print("=" * 60)
+    
+    # 1. 获取所有 db_dir
+    db_dirs = _get_all_db_dirs()
+    if not db_dirs:
+        print("[!] 未找到任何微信数据目录")
+        return []
+    
+    print(f"\n找到 {len(db_dirs)} 个微信账号数据目录")
+    for db_dir in db_dirs:
+        wxid = _extract_wxid_from_db_dir(db_dir)
+        print(f"  - {wxid}: {db_dir}")
+    
+    # 2. 获取所有进程
+    pids = _get_pids()
+    
+    # 3. 为每个账号创建目录并提取密钥
+    accounts = []
+    for db_dir in db_dirs:
+        wxid = _extract_wxid_from_db_dir(db_dir)
+        account_dir = os.path.join(output_base_dir, wxid)
+        os.makedirs(account_dir, exist_ok=True)
+        
+        config_file = os.path.join(account_dir, "config.json")
+        keys_file = os.path.join(account_dir, "keys.json")
+        
+        # 写入配置
+        import json
+        with open(config_file, "w", encoding="utf-8") as f:
+            json.dump({"db_dir": db_dir}, f, indent=2, ensure_ascii=False)
+        
+        # 提取密钥（使用所有进程，密钥会自动匹配）
+        print(f"\n[*] 提取 {wxid} 的密钥...")
+        try:
+            key_map = extract_keys(db_dir, keys_file)
+            accounts.append({
+                "wxid": wxid,
+                "db_dir": db_dir,
+                "config_file": config_file,
+                "keys_file": keys_file,
+                "key_count": len(key_map),
+            })
+            print(f"[+] {wxid}: {len(key_map)} 个密钥")
+        except Exception as e:
+            print(f"[!] {wxid}: 提取失败 - {e}")
+    
+    return accounts"
     r = subprocess.run(["tasklist", "/FI", "IMAGENAME eq Weixin.exe", "/FO", "CSV", "/NH"],
                        capture_output=True, text=True)
     pids = []

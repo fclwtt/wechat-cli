@@ -58,6 +58,7 @@ from .commands.unread import unread
 from .commands.favorites import favorites
 from .commands.export_html import export_html
 from .commands.export_all_html import export_all_html
+from .commands.export_all_accounts import export_all_accounts
 
 cli.add_command(init)
 cli.add_command(sessions)
@@ -72,6 +73,7 @@ cli.add_command(unread)
 cli.add_command(favorites)
 cli.add_command(export_html)
 cli.add_command(export_all_html)
+cli.add_command(export_all_accounts)
 
 
 if __name__ == "__main__":

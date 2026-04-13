@@ -94,7 +94,22 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit, copy_m
     html_file = html_dir / "index.html"
     html_file.write_text(html_content, encoding='utf-8')
 
+    # 生成 Markdown
+    md_content = _generate_markdown(
+        chat_ctx['display_name'],
+        chat_ctx['is_group'],
+        start_time or "最早",
+        end_time or "最新",
+        messages,
+        copy_media
+    )
+
+    # 写入 Markdown 文件
+    md_file = html_dir / "index.md"
+    md_file.write_text(md_content, encoding='utf-8')
+
     click.echo(f"已导出: {html_file}", err=True)
+    click.echo(f"Markdown: {md_file}", err=True)
     click.echo(f"消息数: {len(messages)}", err=True)
     if copy_media:
         click.echo(f"媒体目录: {media_dir}", err=True)
@@ -559,22 +574,14 @@ def _generate_html(display_name, is_group, start_time, end_time, messages, copy_
             if msg['media_copied']:
                 # 已复制的媒体文件
                 if msg['media_type'] == 'image':
-                    content_html = f'''
-                    <a href="{msg['media_path']}" target="_blank" class="media-link">
-                        <span class="media-icon">🖼️</span>
-                        <span>查看图片</span>
-                    </a>
-                    '''
+                    # 图片直接嵌入显示
+                    content_html = f'<img src="{msg["media_path"]}" style="max-width: 300px; border-radius: 8px; cursor: pointer;" onclick="window.open(this.src)" title="点击查看大图">'
                 elif msg['media_type'] == 'video':
-                    content_html = f'''
-                    <a href="{msg['media_path']}" target="_blank" class="media-link">
-                        <span class="media-icon">🎬</span>
-                        <span>查看视频</span>
-                    </a>
-                    '''
+                    # 视频嵌入播放
+                    content_html = f'<video src="{msg["media_path"]}" style="max-width: 300px; border-radius: 8px;" controls></video>'
                 elif msg['media_type'] == 'file':
                     content_html = f'''
-                    <a href="{msg['media_path']}" class="media-link">
+                    <a href="{msg['media_path']}" class="media-link" download>
                         <span class="media-icon">📎</span>
                         <span class="file-info">{msg['content']}</span>
                     </a>
@@ -583,7 +590,6 @@ def _generate_html(display_name, is_group, start_time, end_time, messages, copy_
                 # 原始路径（点击打开文件夹）
                 # Windows 路径需要特殊处理
                 original_path = msg['media_path'].replace('\\', '/')
-                folder_path = Path(msg['media_path']).parent if Path(msg['media_path']).exists() else msg['media_path']
 
                 content_html = f'''
                 <a href="file:///{original_path}" class="media-link" title="点击打开文件位置">
@@ -593,7 +599,7 @@ def _generate_html(display_name, is_group, start_time, end_time, messages, copy_
                 '''
 
         # 转义 HTML 特殊字符（但保留我们生成的链接）
-        if '<a' not in content_html:
+        if '<a' not in content_html and '<img' not in content_html and '<video' not in content_html:
             content_html = content_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
         html += f'''
@@ -633,3 +639,53 @@ def _generate_html(display_name, is_group, start_time, end_time, messages, copy_
 </html>'''
 
     return html
+
+
+def _generate_markdown(display_name, is_group, start_time, end_time, messages, copy_media):
+    """生成 Markdown 格式的聊天记录（对 AI 读取友好）"""
+
+    chat_type = "群聊" if is_group else "私聊"
+    msg_count = len(messages)
+
+    md = f"# {display_name}\n\n"
+    md += f"**类型**: {chat_type}  
+"
+    md += f"**时间范围**: {start_time} 至 {end_time}  
+"
+    md += f"**消息数**: {msg_count}\n\n"
+    md += "---\n\n"
+
+    for msg in messages:
+        # 时间戳
+        time_str = msg['time']
+        sender = msg['sender']
+        content = msg['content']
+
+        # 发送者标记
+        if msg['is_self']:
+            sender_mark = "**我**"
+        elif msg['type'] == 10000:
+            sender_mark = "*系统*"
+        else:
+            sender_mark = f"**{sender}**"
+
+        # 媒体处理
+        if msg['media_path'] and msg['media_copied']:
+            if msg['media_type'] == 'image':
+                content = f"![图片]({msg['media_path']})"
+            elif msg['media_type'] == 'video':
+                content = f"[视频]({msg['media_path']})"
+            elif msg['media_type'] == 'file':
+                content = f"[文件: {msg['content']}]({msg['media_path']})"
+        elif msg['media_path']:
+            # 原始路径
+            content = f"{content} (路径: `{msg['media_path']}`)"
+
+        # 格式化消息
+        md += f"### {time_str}\n\n"
+        md += f"{sender_mark}: {content}\n\n"
+
+    md += "---\n\n"
+    md += f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+
+    return md
