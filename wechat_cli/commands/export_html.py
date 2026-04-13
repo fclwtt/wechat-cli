@@ -648,10 +648,8 @@ def _generate_markdown(display_name, is_group, start_time, end_time, messages, c
     msg_count = len(messages)
 
     md = f"# {display_name}\n\n"
-    md += f"**类型**: {chat_type}  
-"
-    md += f"**时间范围**: {start_time} 至 {end_time}  
-"
+    md += f"**类型**: {chat_type}  \n"
+    md += f"**时间范围**: {start_time} 至 {end_time}  \n"
     md += f"**消息数**: {msg_count}\n\n"
     md += "---\n\n"
 
