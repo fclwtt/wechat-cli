@@ -627,8 +627,8 @@ def _generate_html(display_name, is_group, start_time, end_time, messages, copy_
                 e.preventDefault();
                 const path = this.getAttribute('href').replace('file:///', '');
                 alert('文件路径: ' + path + '\\n\\n请在文件资源管理器中打开此路径');
-            });
-        }};
+            }});
+        }});
     </script>
 </body>
 </html>'''
