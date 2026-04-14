@@ -345,6 +345,7 @@ def _format_message_text(local_id, local_type, content, is_group, chat_username,
         ) or "[链接/文件]"
     elif base_type == 10002:
         # 撤回消息，添加特殊标记
+        print(f"[DEBUG 撤回] base_type={base_type}, content={content[:100] if content else None}")
         text = f"[撤回] {text}" if text else "[撤回]"
     elif base_type != 1:
         type_label = format_msg_type(local_type)
