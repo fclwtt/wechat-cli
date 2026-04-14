@@ -187,6 +187,9 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
                             video_path = original_path.get('video')
                             thumb_path = original_path.get('thumb')
                             
+                            if debug:
+                                print(f"    [DEBUG] 视频处理: video_path={video_path}, thumb_path={thumb_path}")
+                            
                             if video_path and os.path.exists(video_path):
                                 # 复制视频
                                 ext = Path(video_path).suffix
@@ -197,22 +200,28 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
                                     shutil.copy2(video_path, copied_path)
                                     media_path = f"media/{safe_filename}"
                                     media_copied = True
-                                except:
+                                    if debug:
+                                        print(f"    [DEBUG] 视频复制成功: {copied_path}")
+                                except Exception as e:
+                                    if debug:
+                                        print(f"    [DEBUG] 视频复制失败: {e}")
                                     media_path = video_path
                                     
                                 # 复制缩略图
+                                thumb_media_path = None
                                 if thumb_path and os.path.exists(thumb_path):
                                     thumb_filename = f"{create_time}_{local_id}_thumb.jpg"
                                     thumb_copy = media_dir / thumb_filename
                                     try:
                                         shutil.copy2(thumb_path, thumb_copy)
                                         thumb_media_path = f"media/{thumb_filename}"
-                                    except:
-                                        thumb_media_path = thumb_path
-                                else:
-                                    thumb_media_path = None
-                                    
-                                # 存储缩略图路径
+                                        if debug:
+                                            print(f"    [DEBUG] 缩略图复制成功: {thumb_copy}")
+                                    except Exception as e:
+                                        if debug:
+                                            print(f"    [DEBUG] 缩略图复制失败: {e}")
+                                        
+                                # 存储缩略图路径（临时存储在 media_path 字段）
                                 messages.append({
                                     'time': msg_time,
                                     'sender': sender_name,
@@ -227,10 +236,10 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
                                 total += 1
                                 if total >= limit:
                                     break
-                                continue
+                                continue  # 跳过后面的通用 append
                         
                         # 文件处理
-                        elif os.path.exists(original_path) and isinstance(original_path, str):
+                        elif isinstance(original_path, str) and os.path.exists(original_path):
                             ext = Path(original_path).suffix
                             safe_filename = f"{create_time}_{local_id}{ext}"
                             copied_path = media_dir / safe_filename
@@ -239,7 +248,11 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
                                 shutil.copy2(original_path, copied_path)
                                 media_path = f"media/{safe_filename}"
                                 media_copied = True
-                            except:
+                                if debug:
+                                    print(f"    [DEBUG] 文件复制成功: {copied_path}")
+                            except Exception as e:
+                                if debug:
+                                    print(f"    [DEBUG] 文件复制失败: {e}")
                                 media_path = original_path
                         else:
                             media_path = original_path
@@ -387,14 +400,21 @@ def _resolve_media_path(db_dir, content, base_type, create_time, chat_username=N
     # 视频 - 需要匹配具体文件
     if base_type == 43:
         video_dir = msg_dir / "video" / date_prefix
+        if debug:
+            print(f"    [DEBUG] 视频: video_dir={video_dir}, exists={video_dir.exists()}")
         if video_dir.exists():
             # 用时间戳匹配具体文件
-            return _find_video_by_time(video_dir, create_time)
+            result = _find_video_by_time(video_dir, create_time, debug=debug)
+            if debug:
+                print(f"    [DEBUG] 视频: _find_video_by_time 返回 {result}")
+            return result
 
         # 尝试其他格式
         video_dir2 = msg_dir / "video" / date_prefix2
+        if debug:
+            print(f"    [DEBUG] 视频: video_dir2={video_dir2}, exists={video_dir2.exists()}")
         if video_dir2.exists():
-            return _find_video_by_time(video_dir2, create_time)
+            return _find_video_by_time(video_dir2, create_time, debug=debug)
 
     return None
 
