@@ -35,15 +35,15 @@ def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, e
     def debug_log(msg):
         if debug:
             click.echo(f"[DEBUG] {msg}")
-    
+
     debug_log(f"ACCOUNTS_DIR = {ACCOUNTS_DIR}")
     debug_log(f"ACCOUNTS_INDEX_FILE = {ACCOUNTS_INDEX_FILE}")
     debug_log(f"accounts index exists = {os.path.exists(ACCOUNTS_INDEX_FILE)}")
-    
+
     # 获取所有账号
     accounts = list_accounts()
     debug_log(f"Found accounts: {accounts}")
-    
+
     if not accounts:
         click.echo("错误: 未找到任何账号,请先运行 wechat-cli init --all", err=True)
         click.echo("")
@@ -137,7 +137,9 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=Non
     debug_log(f"cache initialized")
 
     # 获取 msg_db_keys
-    msg_db_keys = [k for k in keys_json.keys() if k.startswith("message/")]    debug_log(f"msg_db_keys count = {len(msg_db_keys)}")    if msg_db_keys:
+    msg_db_keys = [k for k in keys_json.keys() if k.startswith("message/")]
+    debug_log(f"msg_db_keys count = {len(msg_db_keys)}")
+    if msg_db_keys:
         debug_log(f"msg_db_keys sample: {msg_db_keys[:3]}...")
 
     # 获取联系人
