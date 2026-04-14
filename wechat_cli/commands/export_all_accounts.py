@@ -274,26 +274,29 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
 
             # 转换为 messages 格式
             messages = []
+            is_group_chat = chat_ctx.get('is_group', False)
             for line in lines:
-                parts = line.split(' ', 2)
-                if len(parts) >= 3:
-                    time_str = parts[0]
-                    rest = parts[1] + ' ' + parts[2]
-                    if ': ' in rest:
-                        sender_part, content = rest.split(': ', 1)
-                        is_self = sender_part == '我'
-                    else:
-                        sender_part = rest
-                        content = ''
-                        is_self = False
+                # line 格式: "[时间] 发送者: 内容" 或 "[时间] 内容"
+                # 先去掉时间前缀 [YYYY-MM-DD HH:MM]
+                line_content = line
+                if line.startswith('[') and '] ' in line:
+                    time_str = line.split('] ', 1)[0].replace('[', '')
+                    line_content = line.split('] ', 1)[1]
                 else:
-                    time_str = parts[0] if parts else ''
+                    time_str = ''
+                    line_content = line
+                
+                # 判断发送者和是否是自己
+                if ': ' in line_content:
+                    sender_part, content = line_content.split(': ', 1)
+                    is_self = sender_part == '我' or (is_group_chat is False and sender_part == '')
+                else:
                     sender_part = ''
-                    content = line
-                    is_self = False
+                    content = line_content
+                    is_self = is_group_chat is False
                 
                 messages.append({
-                    'time': time_str.replace('[', '').replace(']', ''),
+                    'time': time_str,
                     'sender': sender_part,
                     'content': content,
                     'is_self': is_self,

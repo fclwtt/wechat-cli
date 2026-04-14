@@ -76,26 +76,33 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
 
     # 转换 lines 为 messages 格式
     messages = []
+    is_group_chat = chat_ctx.get('is_group', False)
     for line in lines:
-        # line 格式: "时间 发送者: 内容"
-        # 解析时间、发送者、内容
-        parts = line.split(' ', 2)
-        if len(parts) >= 3:
-            time_str = parts[0]
-            rest = parts[1] + ' ' + parts[2]
-            # 发送者: 内容
-            if ': ' in rest:
-                sender_part, content = rest.split(': ', 1)
-                is_self = sender_part == '我'
-            else:
-                sender_part = rest
-                content = ''
-                is_self = False
+        # line 格式: "[时间] 发送者: 内容" 或 "[时间] 内容"
+        # 私聊中：自己发送的消息没有发送者前缀
+        # 群聊中：所有消息都有发送者前缀
+        
+        # 先去掉时间前缀 [YYYY-MM-DD HH:MM]
+        line_content = line
+        if line.startswith('[') and '] ' in line:
+            time_str = line.split('] ', 1)[0].replace('[', '')
+            line_content = line.split('] ', 1)[1]
         else:
-            time_str = parts[0] if parts else ''
+            time_str = ''
+            line_content = line
+        
+        # 判断发送者和是否是自己
+        if ': ' in line_content:
+            sender_part, content = line_content.split(': ', 1)
+            # 私聊中 "我" 或群聊中需要判断
+            is_self = sender_part == '我' or (is_group_chat is False and sender_part == '')
+        else:
+            # 没有发送者前缀，可能是自己发送的消息（私聊）
             sender_part = ''
-            content = line
-            is_self = False
+            content = line_content
+            # 私聊且没有发送者 = 自己发的消息
+            is_self = is_group_chat is False
+        
         
         messages.append({
             'time': time_str.replace('[', '').replace(']', ''),
@@ -169,9 +176,9 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
 
         /* 顶部标题栏 */
         .header {{
-            background: #ededed;
+            background: rgba(26,26,46,0.95);
             padding: 12px 20px;
-            border-bottom: 1px solid #d9d9d9;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
             position: sticky;
             top: 0;
             z-index: 100;
@@ -189,13 +196,14 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
         .avatar-header {{
             width: 40px;
             height: 40px;
-            background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 20px;
             color: white;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.4);
         }}
 
         .header-info {{
@@ -205,21 +213,48 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
         .header h1 {{
             font-size: 17px;
             font-weight: 500;
-            color: #000;
+            color: #fff;
         }}
 
         .header .meta {{
             font-size: 12px;
-            color: #888;
+            color: rgba(255,255,255,0.7);
         }}
 
-        /* 背景区域 */
+        /* 背景区域 - 科技感设计 */
         .bg-area {{
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23ededed" width="100" height="100"/><circle cx="25" cy="25" r="20" fill="%23e0e0e0" opacity="0.3"/><circle cx="75" cy="75" r="30" fill="%23e0e0e0" opacity="0.2"/></svg>') repeat;
-            background-size: 200px;
-            background-color: #ededed;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             padding-bottom: 60px;
             min-height: calc(100vh - 120px);
+            position: relative;
+        }}
+
+        /* 科技感网格背景 */
+        .bg-area::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }}
+
+        /* 光晕效果 */
+        .bg-area::after {{
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(102,126,234,0.15) 0%, transparent 70%);
+            transform: translateX(-50%);
+            pointer-events: none;
         }}
 
         /* 消息区域 */
@@ -255,11 +290,14 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
         }}
 
         .avatar.self {{
-            background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 8px rgba(102,126,234,0.4);
         }}
 
         .avatar.other {{
-            background: linear-gradient(135deg, #576b95 0%, #4a5c80 100%);
+            background: rgba(255,255,255,0.9);
+            color: #1a1a2e;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }}
 
         /* 消息内容 */
@@ -270,7 +308,7 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
 
         .sender-name {{
             font-size: 12px;
-            color: #888;
+            color: rgba(255,255,255,0.7);
             margin-bottom: 4px;
             padding-left: 12px;
         }}
@@ -290,13 +328,15 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
         }}
 
         .message.self .bubble {{
-            background: #95ec69;
-            color: #000;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.3);
         }}
 
         .message.other .bubble {{
-            background: #fff;
-            color: #000;
+            background: rgba(255,255,255,0.9);
+            color: #1a1a2e;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }}
 
         /* 时间 */
@@ -313,12 +353,12 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
             bottom: 0;
             left: 0;
             right: 0;
-            background: #f7f7f7;
-            border-top: 1px solid #d9d9d9;
+            background: rgba(26,26,46,0.95);
+            border-top: 1px solid rgba(255,255,255,0.1);
             padding: 12px;
             text-align: center;
             font-size: 12px;
-            color: #888;
+            color: rgba(255,255,255,0.7);
             max-width: 800px;
             margin: 0 auto;
         }}
