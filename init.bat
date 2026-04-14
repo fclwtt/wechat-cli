@@ -1,20 +1,20 @@
 @echo off
 chcp 65001 >nul
-title 微信聊天记录初始化
+title WeChat Chat Export - Init
 
 echo.
 echo ============================================
-echo   微信聊天记录导出工具 - 初始化
+echo   WeChat Chat Export Tool - Initialize
 echo ============================================
 echo.
-echo 此脚本将：
-echo   1. 检测微信进程
-echo   2. 提取解密密钥
-echo   3. 保存账号配置
+echo This script will:
+echo   1. Detect WeChat process
+echo   2. Extract decryption keys
+echo   3. Save account configuration
 echo.
-echo 请确保：
-echo   - 微信已登录（多账号需同时登录）
-echo   - 微信窗口保持打开状态
+echo Please ensure:
+echo   - WeChat is logged in (all accounts if multiple)
+echo   - WeChat window is open
 echo.
 echo ============================================
 echo.
@@ -22,19 +22,19 @@ echo.
 pause
 
 echo.
-echo [开始初始化]
+echo [Start Initialization]
 echo.
 
 wechat-cli.exe init --all
 
 echo.
 echo ============================================
-echo   初始化完成！
+echo   Initialization Complete!
 echo ============================================
 echo.
-echo 下一步：
-echo   1. 双击 export-all-html.bat 导出所有聊天
-echo   2. 双击 export-daily-html.bat 每日增量导出
+echo Next steps:
+echo   1. Double-click export-all-html.bat to export all chats
+echo   2. Double-click export-daily-html.bat for daily updates
 echo.
 
 pause

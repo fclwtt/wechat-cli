@@ -1,52 +1,52 @@
 @echo off
 chcp 65001 >nul
-title 微信聊天记录每日更新
+title WeChat Chat Export - Daily Update
 
 echo ============================================================
-echo   微信聊天记录每日更新（多账号版）
+echo   WeChat Chat Export Tool - Daily Update (Multi-Account)
 echo ============================================================
 echo.
 
-REM 检查当前目录是否有 wechat-cli.exe
+REM Check if wechat-cli.exe exists
 if not exist "%~dp0wechat-cli.exe" (
-    echo [错误] 找不到 wechat-cli.exe
-    echo 请确保此脚本和 wechat-cli.exe 在同一文件夹
+    echo [ERROR] wechat-cli.exe not found
+    echo Please ensure this script and wechat-cli.exe are in the same folder
     pause
     exit /b 1
 )
 
 set CLI_PATH=%~dp0wechat-cli.exe
 
-REM 计算昨天的日期（每日导出昨天有新消息的聊天）
+REM Calculate yesterday's date
 for /f "tokens=*" %%a in ('powershell -command "(Get-Date).AddDays(-1).ToString('yyyy-MM-dd')"') do set YESTERDAY=%%a
 
-echo 导出日期: %YESTERDAY%（昨天）
+echo Export Date: %YESTERDAY% (yesterday)
 echo.
 
-REM 设置输出目录（与全量导出同一目录）
+REM Set output directory (same as full export)
 set OUTPUT_DIR=%USERPROFILE%\wechat-chats-backup
-echo 输出目录: %OUTPUT_DIR%
+echo Output: %OUTPUT_DIR%
 echo.
 
-echo 正在更新聊天记录...
-echo 说明：只导出昨天有新消息的聊天，覆盖更新已有 HTML 文件
+echo Updating chat records...
+echo Note: Only chats with new messages yesterday will be updated
 echo.
 
-REM 运行每日更新（只导出昨天有消息的聊天，覆盖更新）
+REM Run daily update (only chats with messages yesterday, overwrite existing)
 "%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%" --limit 2000 --max-chats 100 --start-time "%YESTERDAY%" --end-time "%YESTERDAY%" --only-active
 
 echo.
 echo ============================================================
-echo   更新完成！
+echo   Update Complete!
 echo ============================================================
 echo.
-echo 输出目录: %OUTPUT_DIR%
+echo Output: %OUTPUT_DIR%
 echo.
-echo 说明：
-echo   - 只更新了昨天有新消息的聊天记录
-echo   - HTML 文件已覆盖更新（保留最新内容）
-echo   - 无新消息的聊天不会更新（节省时间）
+echo Note:
+echo   - Only chats with new messages yesterday were updated
+echo   - HTML files were overwritten with latest content
+echo   - Chats without new messages were skipped
 echo.
-echo 正在打开输出文件夹...
+echo Opening output folder...
 explorer "%OUTPUT_DIR%"
 pause

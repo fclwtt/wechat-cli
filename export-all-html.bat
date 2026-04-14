@@ -1,16 +1,16 @@
 @echo off
 chcp 65001 >nul
-title 微信聊天记录全量导出
+title WeChat Chat Export - Export All
 
 echo ============================================================
-echo   微信聊天记录全量导出（多账号版）
+echo   WeChat Chat Export Tool - Export All (Multi-Account)
 echo ============================================================
 echo.
 
-REM 检查当前目录是否有 wechat-cli.exe
+REM Check if wechat-cli.exe exists
 if not exist "%~dp0wechat-cli.exe" (
-    echo [错误] 找不到 wechat-cli.exe
-    echo 请确保此脚本和 wechat-cli.exe 在同一文件夹
+    echo [ERROR] wechat-cli.exe not found
+    echo Please ensure this script and wechat-cli.exe are in the same folder
     pause
     exit /b 1
 )
@@ -18,18 +18,18 @@ if not exist "%~dp0wechat-cli.exe" (
 set CLI_PATH=%~dp0wechat-cli.exe
 set OUTPUT_DIR=%USERPROFILE%\wechat-chats-backup
 
-echo 工具: %CLI_PATH%
-echo 输出: %OUTPUT_DIR%
+echo Tool: %CLI_PATH%
+echo Output: %OUTPUT_DIR%
 echo.
-echo 正在导出所有聊天记录...
+echo Exporting all chat records...
 echo.
 
-REM 运行导出命令（多账号，纯文字版）
+REM Run export command (multi-account, text-only)
 "%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%" --limit 2000 --max-chats 100
 
 echo.
-echo 导出完成！
+echo Export Complete!
 echo.
-echo 正在打开输出文件夹...
+echo Opening output folder...
 explorer "%OUTPUT_DIR%"
 pause
