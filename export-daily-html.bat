@@ -3,7 +3,7 @@ chcp 65001 >nul
 title WeChat Chat Export - Daily Update
 
 echo ============================================================
-echo   WeChat Chat Export Tool - Daily Update (Multi-Account)
+echo   WeChat Chat Export Tool - Daily Update
 echo ============================================================
 echo.
 

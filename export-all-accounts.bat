@@ -1,9 +1,9 @@
 @echo off
 chcp 65001 >nul
-title WeChat Chat Export - Export All
+title WeChat Chat Export - Export All Accounts
 
 echo ============================================================
-echo   WeChat Chat Export Tool - Export All (Multi-Account)
+echo   WeChat Chat Export Tool - Export All Accounts
 echo ============================================================
 echo.
 
@@ -21,10 +21,10 @@ set OUTPUT_DIR=%USERPROFILE%\wechat-chats-backup
 echo Tool: %CLI_PATH%
 echo Output: %OUTPUT_DIR%
 echo.
-echo Exporting all chat records...
+echo Exporting all chat records from all accounts...
 echo.
 
-REM Run export command (multi-account, text-only)
+REM Run export command (multi-account, text-only, new HTML style)
 "%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%" --limit 2000 --max-chats 100
 
 echo.

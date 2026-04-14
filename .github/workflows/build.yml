@@ -50,6 +50,8 @@ jobs:
             --hidden-import=wechat_cli.core.crypto `
             --hidden-import=wechat_cli.core.messages `
             --hidden-import=wechat_cli.core.contacts `
+            --hidden-import=wechat_cli.core.db_cache `
+            --hidden-import=wechat_cli.core.key_utils `
             --hidden-import=wechat_cli.keys `
             --hidden-import=wechat_cli.keys.scanner_windows `
             --hidden-import=wechat_cli.keys.common `
@@ -67,6 +69,7 @@ jobs:
             --hidden-import=wechat_cli.commands.favorites `
             --hidden-import=wechat_cli.commands.export_html `
             --hidden-import=wechat_cli.commands.export_all_html `
+            --hidden-import=wechat_cli.commands.export_all_accounts `
             --collect-all wechat_cli `
             --hidden-import=Crypto `
             --hidden-import=Crypto.Cipher `
