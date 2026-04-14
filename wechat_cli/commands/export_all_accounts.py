@@ -181,12 +181,27 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                             count = row[1]
                             
                             # 获取聊天对象名
+                            chat_username = None
                             try:
-                                sample = conn.execute(
-                                    f"SELECT talker FROM [{table_name}] LIMIT 1"
-                                ).fetchone()
-                                chat_username = sample[0] if sample else table_name
-                            except:
+                                # 尝试从多条消息中获取不同的 talker
+                                talkers = conn.execute(
+                                    f"SELECT DISTINCT talker FROM [{table_name}] LIMIT 10"
+                                ).fetchall()
+                                if talkers:
+                                    # 找到最频繁的 talker（通常是聊天对象）
+                                    talker_counts = {}
+                                    for t in talkers:
+                                        t_name = t[0]
+                                        if t_name:
+                                            talker_counts[t_name] = talker_counts.get(t_name, 0) + 1
+                                    if talker_counts:
+                                        # 取出现次数最多的 talker
+                                        chat_username = max(talker_counts.keys(), key=lambda k: talker_counts[k])
+                            except Exception as e:
+                                if debug:
+                                    debug_log(f"获取 talker 失败: {e}")
+
+                            if not chat_username:
                                 chat_username = table_name
 
                             display_name = display_name_fn(chat_username, names)
@@ -222,6 +237,9 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
 
     for i, chat_info in enumerate(chats, 1):
         chat_name = chat_info['display_name'] or chat_info['username']
+        # 如果 display_name 是表名(Msg_xxx)，显示 username
+        if chat_name.startswith('Msg_'):
+            chat_name = chat_info['username'] if not chat_info['username'].startswith('Msg_') else chat_name
         click.echo(f"    [{i}/{len(chats)}] {chat_name}")
 
         try:
@@ -237,7 +255,11 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             }
 
             # 创建聊天目录
-            safe_name = chat_name.replace('/', '_').replace('\\', '_').replace(':', '_')
+            folder_name = chat_info['display_name'] or chat_info['username']
+            # 如果是 Msg_xxx 表名，用 username 替换
+            if folder_name.startswith('Msg_') and not chat_info['username'].startswith('Msg_'):
+                folder_name = chat_info['username']
+            safe_name = folder_name.replace('/', '_').replace('\\', '_').replace(':', '_')
             chat_dir = account_dir / safe_name
             chat_dir.mkdir(parents=True, exist_ok=True)
 
