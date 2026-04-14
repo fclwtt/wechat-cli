@@ -90,7 +90,7 @@ def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, e
         click.echo("-" * 40)
 
         try:
-            _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts, end_ts, debug)
+            _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts, end_ts, start_time, end_time, debug)
         except Exception as e:
             click.echo(f"  导出失败: {e}", err=True)
 
@@ -105,7 +105,7 @@ def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, e
     click.echo("  2. 进入账号目录 → 聊天目录 → 双击 index.html")
 
 
-def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=None, end_ts=None, debug=False):
+def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=None, end_ts=None, start_time=None, end_time=None, debug=False):
     """导出单个账号的所有聊天"""
     import json
     from .export_html import _collect_message_details, _generate_html, _generate_markdown
