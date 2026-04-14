@@ -221,7 +221,9 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
                                         if debug:
                                             print(f"    [DEBUG] 缩略图复制失败: {e}")
                                         
-                                # 存储缩略图路径（临时存储在 media_path 字段）
+                                # 存储缩略图路径
+                                if debug:
+                                    print(f"    [DEBUG] 视频消息添加: media_path={media_path}, thumb_path={thumb_media_path}, media_copied={media_copied}")
                                 messages.append({
                                     'time': msg_time,
                                     'sender': sender_name,
@@ -304,25 +306,33 @@ def _parse_content(content, base_type, sub_type):
         return "[视频]"
 
     # 文件
-    if base_type == 49 and sub_type == 6:
-        try:
-            import xml.etree.ElementTree as ET
-            root = ET.fromstring(content[:20000])
-            title = root.findtext('.//appmsg/title') or ""
-            return f"[文件] {title.strip()}" if title else "[文件]"
-        except:
-            return "[文件]"
-
-    # 链接
     if base_type == 49:
         try:
             import xml.etree.ElementTree as ET
             root = ET.fromstring(content[:20000])
-            title = root.findtext('.//appmsg/title') or ""
-            url = root.findtext('.//appmsg/url') or ""
-            return f"[链接] {title.strip()}\n{url}" if title else "[链接]"
+            appmsg = root.find('.//appmsg')
+            if appmsg:
+                app_type = int((appmsg.findtext('type') or '0').strip())
+                title = (appmsg.findtext('title') or '').strip()
+                
+                # 根据子类型区分
+                if app_type == 6:
+                    return f"[文件] {title}" if title else "[文件]"
+                elif app_type == 33 or app_type == 36:
+                    return f"[小程序] {title}" if title else "[小程序]"
+                elif app_type == 4:
+                    return f"[视频] {title}" if title else "[视频]"
+                elif app_type == 5:
+                    url = (appmsg.findtext('url') or '').strip()
+                    return f"[链接] {title}\n{url}" if title else "[链接]"
+                elif app_type == 1 or app_type == 0:
+                    # 文本分享，直接显示内容
+                    return title if title else "[分享]"
+                else:
+                    return f"[分享] {title}" if title else "[分享]"
+            return "[分享]"
         except:
-            return "[链接]"
+            return "[分享]"
 
     # 语音
     if base_type == 34:
@@ -790,7 +800,7 @@ def _generate_html(display_name, is_group, start_time, end_time, messages, copy_
                     <span class="file-info">{msg['content']}</span>
                 </a>
                 '''
-        elif msg['type'] == 3:
+        elif msg['type'] == 3 and not msg.get('media_path'):
             # 图片占位符（微信4.x加密暂不支持）
             content_html = '<div style="padding: 12px; background: #f0f0f0; border-radius: 8px; color: #888; font-size: 13px;">📷 [图片暂不支持 - 微信4.x加密格式]</div>'
         elif msg['type'] == 43:

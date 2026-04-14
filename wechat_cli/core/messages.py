@@ -414,7 +414,7 @@ def _query_messages(conn, table_name, start_ts=None, end_ts=None, keyword='', li
                WCDB_CT_message_content
         FROM [{table_name}]
         {where_sql}
-        ORDER BY create_time DESC
+        ORDER BY create_time ASC
     """
     if limit is None:
         return conn.execute(sql, params).fetchall()
