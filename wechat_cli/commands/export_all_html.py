@@ -7,17 +7,16 @@ from contextlib import closing
 import sqlite3
 
 from ..core.contacts import get_contact_names
-from ..core.messages import resolve_chat_context
-from .export_html import _collect_message_details, _generate_html, _generate_markdown
+from ..core.messages import resolve_chat_context, collect_chat_history
+from .export_html import _generate_html, _generate_markdown
 
 
 @click.command("export-all-html")
 @click.option("--output", "output_path", default=None, help="输出目录路径")
 @click.option("--limit", default=2000, help="每个聊天导出的消息数量")
-@click.option("--copy-media", is_flag=True, help="复制图片/文件到输出目录")
 @click.option("--max-chats", default=100, help="最多导出多少个聊天")
 @click.pass_context
-def export_all_html(ctx, output_path, limit, copy_media, max_chats):
+def export_all_html(ctx, output_path, limit, max_chats):
     """导出所有聊天记录为 HTML 页面
 
     \b
@@ -89,22 +88,42 @@ def export_all_html(ctx, output_path, limit, copy_media, max_chats):
             # 创建聊天目录
             chat_dir.mkdir(parents=True, exist_ok=True)
 
-            # 媒体目录
-            media_dir = None
-            if copy_media:
-                media_dir = chat_dir / "media"
-                media_dir.mkdir(exist_ok=True)
-
-            # 收集消息详情
-            messages = _collect_message_details(
+            # 收集消息（使用已有函数）
+            lines, failures = collect_chat_history(
                 chat_ctx, names, app.display_name_fn,
-                start_ts=None, end_ts=None, limit=limit,
-                db_dir=app.db_dir, copy_media=copy_media, media_dir=media_dir
+                start_ts=None, end_ts=None, limit=limit, offset=0,
             )
 
-            if not messages:
+            if not lines:
                 click.echo(f"    跳过: 无消息")
                 continue
+
+            # 转换为 messages 格式
+            messages = []
+            for line in lines:
+                parts = line.split(' ', 2)
+                if len(parts) >= 3:
+                    time_str = parts[0]
+                    rest = parts[1] + ' ' + parts[2]
+                    if ': ' in rest:
+                        sender_part, content = rest.split(': ', 1)
+                        is_self = sender_part == '我'
+                    else:
+                        sender_part = rest
+                        content = ''
+                        is_self = False
+                else:
+                    time_str = parts[0] if parts else ''
+                    sender_part = ''
+                    content = line
+                    is_self = False
+                
+                messages.append({
+                    'time': time_str,
+                    'sender': sender_part,
+                    'content': content,
+                    'is_self': is_self,
+                })
 
             # 生成 HTML
             html_content = _generate_html(
@@ -112,7 +131,6 @@ def export_all_html(ctx, output_path, limit, copy_media, max_chats):
                 chat_ctx['is_group'],
                 "最早", "最新",
                 messages,
-                copy_media
             )
 
             # 写入 HTML 文件
@@ -125,7 +143,6 @@ def export_all_html(ctx, output_path, limit, copy_media, max_chats):
                 chat_ctx['is_group'],
                 "最早", "最新",
                 messages,
-                copy_media
             )
 
             # 写入 Markdown 文件
