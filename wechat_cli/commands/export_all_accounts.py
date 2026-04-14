@@ -6,7 +6,7 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-from ..core.config import ACCOUNTS_DIR, list_accounts, load_account_config
+from ..core.config import ACCOUNTS_DIR, ACCOUNTS_INDEX_FILE, list_accounts, load_account_config
 from ..core.db_cache import DBCache
 from ..core.contacts import get_contact_names
 from ..core.messages import resolve_chat_context
