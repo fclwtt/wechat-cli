@@ -410,6 +410,22 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }}
 
+        /* 撤回消息：居中、醒目颜色 */
+        .message.recall {{
+            text-align: center;
+            margin: 16px 0;
+        }}
+
+        .recall-text {{
+            display: inline-block;
+            padding: 8px 16px;
+            background: rgba(255,193,7,0.15);  /* 黄色背景 */
+            color: #ff9800;  /* 醒目的橙色 */
+            border-radius: 4px;
+            font-size: 14px;
+            border: 1px solid rgba(255,152,0,0.3);
+        }}
+
         /* 时间 */
         .time-separator {{
             text-align: center;
@@ -481,16 +497,30 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
 
     # 添加消息
     for msg in messages:
-        msg_class = "self" if msg['is_self'] else "other"
-        content_html = msg['content']
+        # 检查是否是撤回消息
+        is_recall = msg['content'].startswith('[撤回]')
+        
+        if is_recall:
+            # 撤回消息：居中、醒目颜色
+            msg_class = "recall"
+            content_html = msg['content'].replace('[撤回] ', '').replace('[撤回]', '')
+            # 转义 HTML 特殊字符
+            content_html = content_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            html += f'''                <div class="message {msg_class}">
+                    <div class="recall-text">⚠️ {content_html or "撤回了一条消息"}</div>
+                </div>
+'''
+        else:
+            msg_class = "self" if msg['is_self'] else "other"
+            content_html = msg['content']
 
-        # 转义 HTML 特殊字符
-        content_html = content_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            # 转义 HTML 特殊字符
+            content_html = content_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
-        # 头像图标
-        avatar_icon = "💬" if msg['is_self'] else "👤"
+            # 头像图标
+            avatar_icon = "💬" if msg['is_self'] else "👤"
 
-        html += f'''                <div class="message {msg_class}">
+            html += f'''                <div class="message {msg_class}">
                     <div class="avatar {msg_class}">{avatar_icon}</div>
                     <div class="msg-content">
                         <div class="msg-meta">
