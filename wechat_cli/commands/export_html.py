@@ -758,41 +758,44 @@ def _generate_html(display_name, is_group, start_time, end_time, messages, copy_
         content_html = msg['content']
 
         # 媒体链接
-        if msg['media_path']:
-            if msg['media_copied']:
-                # 已复制的媒体文件
-                if msg['media_type'] == 'image':
-                    # 图片直接嵌入显示
-                    content_html = f'<img src="{msg["media_path"]}" style="max-width: 300px; border-radius: 8px; cursor: pointer;" onclick="window.open(this.src)" title="点击查看大图">'
-                elif msg['media_type'] == 'video':
-                    # 视频嵌入播放，支持缩略图
-                    thumb = msg.get('thumb_path')
-                    if thumb:
-                        content_html = f'''<div style="position: relative; max-width: 300px;">
+        if msg.get('media_path') and msg.get('media_copied'):
+            # 已复制的媒体文件
+            if msg['media_type'] == 'image':
+                # 图片直接嵌入显示
+                content_html = f'<img src="{msg["media_path"]}" style="max-width: 300px; border-radius: 8px; cursor: pointer;" onclick="window.open(this.src)" title="点击查看大图">'
+            elif msg['media_type'] == 'video':
+                # 视频嵌入播放，支持缩略图
+                thumb = msg.get('thumb_path')
+                if thumb:
+                    content_html = f'''<div style="position: relative; max-width: 300px;">
                             <video poster="{thumb}" style="max-width: 300px; border-radius: 8px;" controls>
                                 <source src="{msg['media_path']}" type="video/mp4">
                             </video>
                         </div>'''
-                    else:
-                        content_html = f'<video src="{msg["media_path"]}" style="max-width: 300px; border-radius: 8px;" controls></video>'
-                elif msg['media_type'] == 'file':
-                    content_html = f'''
+                else:
+                    content_html = f'<video src="{msg["media_path"]}" style="max-width: 300px; border-radius: 8px;" controls></video>'
+            elif msg['media_type'] == 'file':
+                content_html = f'''
                     <a href="{msg['media_path']}" class="media-link" download>
                         <span class="media-icon">📎</span>
                         <span class="file-info">{msg['content']}</span>
                     </a>
                     '''
-            else:
-                # 原始路径（点击打开文件夹）
-                # Windows 路径需要特殊处理
-                original_path = msg['media_path'].replace('\\', '/')
-
-                content_html = f'''
+        elif msg.get('media_path'):
+            # 原始路径（点击打开文件夹）
+            original_path = msg['media_path'].replace('\\', '/')
+            content_html = f'''
                 <a href="file:///{original_path}" class="media-link" title="点击打开文件位置">
                     <span class="media-icon">📁</span>
                     <span class="file-info">{msg['content']}</span>
                 </a>
                 '''
+        elif msg['type'] == 3:
+            # 图片占位符（微信4.x加密暂不支持）
+            content_html = '<div style="padding: 12px; background: #f0f0f0; border-radius: 8px; color: #888; font-size: 13px;">📷 [图片暂不支持 - 微信4.x加密格式]</div>'
+        elif msg['type'] == 43:
+            # 视频占位符
+            content_html = '<div style="padding: 12px; background: #f0f0f0; border-radius: 8px; color: #888; font-size: 13px;">🎬 [视频]</div>'
 
         # 转义 HTML 特殊字符（但保留我们生成的链接）
         if '<a' not in content_html and '<img' not in content_html and '<video' not in content_html:
