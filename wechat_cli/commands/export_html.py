@@ -169,7 +169,10 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
             
             # 文件（type=49）保留处理
             if base_type == 49:
-                original_path = _resolve_media_path(db_dir, content, base_type, create_time, ctx.get('username'), debug=False)
+                # 调试：看看 XML 内容
+                if debug:
+                    print(f"    [DEBUG] type=49 content[:500]: {content[:500] if content else 'None'}")
+                original_path = _resolve_media_path(db_dir, content, base_type, create_time, ctx.get('username'), debug=debug)
                 if original_path and isinstance(original_path, str) and os.path.exists(original_path):
                     media_type = 'file'
                     if copy_media and media_dir:
@@ -181,6 +184,8 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
                             shutil.copy2(original_path, copied_path)
                             media_path = f"media/{safe_filename}"
                             media_copied = True
+                            if debug:
+                                print(f"    [DEBUG] 文件复制成功: {copied_path}")
                         except:
                             pass
 
