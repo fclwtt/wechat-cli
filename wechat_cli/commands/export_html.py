@@ -169,49 +169,68 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
 
             if base_type in (3, 43, 49):  # 图片、视频、文件
                 # 调试输出
-                if debug and base_type == 3:
-                    print(f"    [DEBUG] Found image: create_time={create_time}, username={ctx.get('username')}")
+                if debug and base_type in (3, 43):
+                    print(f"    [DEBUG] Found media: type={base_type}, create_time={create_time}, username={ctx.get('username')}")
                     print(f"    [DEBUG] db_dir={db_dir}")
                     
                 original_path = _resolve_media_path(db_dir, content, base_type, create_time, ctx.get('username'), debug=debug)
                 
-                if debug and base_type == 3:
+                if debug and base_type in (3, 43):
                     print(f"    [DEBUG] original_path={original_path}")
                     
                 if original_path:
                     media_type = 'image' if base_type == 3 else ('video' if base_type == 43 else 'file')
                     
-                    if debug and base_type == 3:
-                        print(f"    [DEBUG] media_type={media_type}, copy_media={copy_media}, media_dir={media_dir}")
-                        print(f"    [DEBUG] original_path.endswith('.dat')={original_path.endswith('.dat')}")
-                    
                     if copy_media and media_dir:
-                        # 图片需要解码 .dat 文件
-                        if base_type == 3 and original_path.endswith('.dat'):
-                            from ..core.image_decode import decode_dat_file_fast
-                            ext = '.jpg'
-                            safe_filename = f"{create_time}_{local_id}{ext}"
-                            decoded_path = media_dir / safe_filename
+                        # 视频处理（返回字典）
+                        if base_type == 43 and isinstance(original_path, dict):
+                            video_path = original_path.get('video')
+                            thumb_path = original_path.get('thumb')
                             
-                            if debug:
-                                print(f"    [DEBUG] 解码: {original_path} -> {decoded_path}")
-                            
-                            # 解码图片
-                            decoded = decode_dat_file_fast(original_path, str(decoded_path), debug=True)
-                            
-                            if debug:
-                                print(f"    [DEBUG] 解码结果: {decoded}")
-                            
-                            if decoded:
-                                media_path = f"media/{safe_filename}"
-                                media_copied = True
-                            else:
-                                # 解码失败，保留原始路径
-                                if debug:
-                                    print(f"    [DEBUG] 解码失败！")
-                                media_path = original_path
-                        elif os.path.exists(original_path):
-                            # 视频/文件直接复制
+                            if video_path and os.path.exists(video_path):
+                                # 复制视频
+                                ext = Path(video_path).suffix
+                                safe_filename = f"{create_time}_{local_id}{ext}"
+                                copied_path = media_dir / safe_filename
+                                try:
+                                    import shutil
+                                    shutil.copy2(video_path, copied_path)
+                                    media_path = f"media/{safe_filename}"
+                                    media_copied = True
+                                except:
+                                    media_path = video_path
+                                    
+                                # 复制缩略图
+                                if thumb_path and os.path.exists(thumb_path):
+                                    thumb_filename = f"{create_time}_{local_id}_thumb.jpg"
+                                    thumb_copy = media_dir / thumb_filename
+                                    try:
+                                        shutil.copy2(thumb_path, thumb_copy)
+                                        thumb_media_path = f"media/{thumb_filename}"
+                                    except:
+                                        thumb_media_path = thumb_path
+                                else:
+                                    thumb_media_path = None
+                                    
+                                # 存储缩略图路径
+                                messages.append({
+                                    'time': msg_time,
+                                    'sender': sender_name,
+                                    'content': msg_content,
+                                    'type': base_type,
+                                    'media_path': media_path,
+                                    'thumb_path': thumb_media_path,
+                                    'media_type': media_type,
+                                    'media_copied': media_copied,
+                                    'is_self': not real_sender_id,
+                                })
+                                total += 1
+                                if total >= limit:
+                                    break
+                                continue
+                        
+                        # 文件处理
+                        elif os.path.exists(original_path) and isinstance(original_path, str):
                             ext = Path(original_path).suffix
                             safe_filename = f"{create_time}_{local_id}{ext}"
                             copied_path = media_dir / safe_filename
@@ -359,28 +378,11 @@ def _resolve_media_path(db_dir, content, base_type, create_time, chat_username=N
         except:
             pass
 
-    # 图片 - 需要匹配具体文件
+    # 图片 - 微信 4.x 加密格式，暂不支持解码
     if base_type == 3:
-        attach_dir = msg_dir / "attach"
-        if attach_dir.exists():
-            # 尝试匹配用户目录
-            if chat_username:
-                h = hashlib.md5(chat_username.encode()).hexdigest()
-                user_attach = attach_dir / h
-                if user_attach.exists():
-                    img_dir = user_attach / date_prefix / "Img"
-                    if img_dir.exists():
-                        # 用时间戳匹配具体文件
-                        return _find_image_by_time(img_dir, create_time)
-
-            # 搜索所有目录
-            for d in attach_dir.iterdir():
-                if d.is_dir():
-                    img_dir = d / date_prefix / "Img"
-                    if img_dir.exists():
-                        result = _find_image_by_time(img_dir, create_time)
-                        if result:
-                            return result
+        if debug:
+            print("    [DEBUG] 图片: 微信4.x加密格式，暂不支持解码")
+        return None  # 暂时返回 None，显示占位符
 
     # 视频 - 需要匹配具体文件
     if base_type == 43:
@@ -438,10 +440,13 @@ def _find_image_by_time(img_dir, create_time):
     return None
 
 
-def _find_video_by_time(video_dir, create_time):
-    """根据时间戳查找视频文件"""
+def _find_video_by_time(video_dir, create_time, debug=False):
+    """根据时间戳查找视频文件和缩略图"""
     # 查找所有视频文件
     video_files = list(video_dir.glob("*.mp4")) + list(video_dir.glob("*.avi"))
+
+    if debug:
+        print(f"      [DEBUG] _find_video_by_time: 找到 {len(video_files)} 个视频文件")
 
     if not video_files:
         return None
@@ -451,6 +456,7 @@ def _find_video_by_time(video_dir, create_time):
     target_time = dt.timestamp()
 
     best_file = None
+    best_thumb = None
     best_diff = float('inf')
 
     for f in video_files:
@@ -460,16 +466,33 @@ def _find_video_by_time(video_dir, create_time):
             if diff < best_diff:
                 best_diff = diff
                 best_file = f
+                # 查找对应的缩略图
+                thumb_name = f.stem + "_thumb.jpg"
+                thumb_path = video_dir / thumb_name
+                if thumb_path.exists():
+                    best_thumb = thumb_path
         except:
             pass
 
     # 如果时间差在 60 秒内，返回该文件
     if best_file and best_diff < 60:
-        return str(best_file)
+        result = {
+            'video': str(best_file),
+            'thumb': str(best_thumb) if best_thumb else None
+        }
+        if debug:
+            print(f"      [DEBUG] 找到视频: {best_file.name}, 缩略图: {best_thumb.name if best_thumb else '无'}")
+        return result
 
     # 否则返回第一个文件
     if len(video_files) == 1:
-        return str(video_files[0])
+        thumb_name = video_files[0].stem + "_thumb.jpg"
+        thumb_path = video_dir / thumb_name
+        result = {
+            'video': str(video_files[0]),
+            'thumb': str(thumb_path) if thumb_path.exists() else None
+        }
+        return result
 
     return None
 
@@ -716,8 +739,16 @@ def _generate_html(display_name, is_group, start_time, end_time, messages, copy_
                     # 图片直接嵌入显示
                     content_html = f'<img src="{msg["media_path"]}" style="max-width: 300px; border-radius: 8px; cursor: pointer;" onclick="window.open(this.src)" title="点击查看大图">'
                 elif msg['media_type'] == 'video':
-                    # 视频嵌入播放
-                    content_html = f'<video src="{msg["media_path"]}" style="max-width: 300px; border-radius: 8px;" controls></video>'
+                    # 视频嵌入播放，支持缩略图
+                    thumb = msg.get('thumb_path')
+                    if thumb:
+                        content_html = f'''<div style="position: relative; max-width: 300px;">
+                            <video poster="{thumb}" style="max-width: 300px; border-radius: 8px;" controls>
+                                <source src="{msg['media_path']}" type="video/mp4">
+                            </video>
+                        </div>'''
+                    else:
+                        content_html = f'<video src="{msg["media_path"]}" style="max-width: 300px; border-radius: 8px;" controls></video>'
                 elif msg['media_type'] == 'file':
                     content_html = f'''
                     <a href="{msg['media_path']}" class="media-link" download>
