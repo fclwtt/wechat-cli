@@ -52,6 +52,8 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
 
     # 获取账号自己的 username
     self_username = get_self_username(app.db_dir, app.cache, app.decrypted_dir)
+    # 获取自己的昵称
+    self_display_name = names.get(self_username, self_username) if self_username else ''
 
     # 添加 self_username 到 chat_ctx
     chat_ctx['self_username'] = self_username
@@ -108,8 +110,8 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
         # 判断发送者和是否是自己
         if ': ' in line_content:
             sender_part, content = line_content.split(': ', 1)
-            # 自己的消息：发送者是 self_username 或 '我'
-            is_self = sender_part == self_username or sender_part == '我'
+            # 自己的消息：发送者是 self_username 或 self_display_name（昵称）或 '我'
+            is_self = sender_part == self_username or sender_part == self_display_name or sender_part == '我'
         else:
             # 没有发送者前缀（理论上不会再出现，因为 _resolve_sender_label 已修复）
             sender_part = ''

@@ -146,6 +146,9 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
     # 获取账号自己的 username
     self_username = get_self_username(db_dir, cache, decrypted_dir)
     debug_log(f"账号自己的 username: {self_username}")
+    # 获取自己的昵称
+    self_display_name = names.get(self_username, self_username) if self_username else ''
+    debug_log(f"账号自己的昵称: {self_display_name}")
 
     # 显示名函数
     def display_name_fn(username, names_dict):
@@ -294,8 +297,8 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                 # 判断发送者和是否是自己
                 if ': ' in line_content:
                     sender_part, content = line_content.split(': ', 1)
-                    # 自己的消息：发送者是 self_username 或 '我'
-                    is_self = sender_part == self_username or sender_part == '我'
+                    # 自己的消息：发送者是 self_username 或 self_display_name（昵称）或 '我'
+                    is_self = sender_part == self_username or sender_part == self_display_name or sender_part == '我'
                 else:
                     # 没有发送者前缀（理论上不会再出现）
                     sender_part = ''
