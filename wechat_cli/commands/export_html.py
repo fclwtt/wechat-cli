@@ -155,153 +155,213 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
         }}
 
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #ededed;
             min-height: 100vh;
-            padding: 20px;
         }}
 
-        .container {{
-            max-width: 900px;
+        .chat-window {{
+            max-width: 800px;
             margin: 0 auto;
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            overflow: hidden;
+            background: #ededed;
+            min-height: 100vh;
         }}
 
+        /* 顶部标题栏 */
         .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #ededed;
+            padding: 12px 20px;
+            border-bottom: 1px solid #d9d9d9;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+
+        .header-content {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }}
+
+        .avatar-header {{
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
             color: white;
-            padding: 30px;
-            text-align: center;
+        }}
+
+        .header-info {{
+            flex: 1;
         }}
 
         .header h1 {{
-            font-size: 28px;
-            margin-bottom: 8px;
+            font-size: 17px;
+            font-weight: 500;
+            color: #000;
         }}
 
         .header .meta {{
-            font-size: 14px;
-            opacity: 0.9;
-        }}
-
-        .stats {{
-            display: flex;
-            justify-content: space-around;
-            padding: 20px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-        }}
-
-        .stat-item {{
-            text-align: center;
-        }}
-
-        .stat-item .number {{
-            font-size: 24px;
-            font-weight: bold;
-            color: #667eea;
-        }}
-
-        .stat-item .label {{
             font-size: 12px;
-            color: #6c757d;
-            margin-top: 4px;
+            color: #888;
         }}
 
+        /* 背景区域 */
+        .bg-area {{
+            background: #ededed;
+            padding-bottom: 60px;
+        }}
+
+        /* 消息区域 */
         .chat-container {{
-            max-height: 800px;
-            overflow-y: auto;
-            padding: 20px;
+            padding: 16px;
+            max-width: 800px;
+            margin: 0 auto;
         }}
 
         .message {{
             margin-bottom: 16px;
-            clear: both;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
         }}
 
         .message.self {{
-            text-align: right;
+            flex-direction: row-reverse;
         }}
 
-        .message.other {{
-            text-align: left;
+        /* 头像 */
+        .avatar {{
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            background: #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+            flex-shrink: 0;
         }}
 
-        .message.system {{
-            text-align: center;
-            color: #6c757d;
-            font-size: 12px;
+        .avatar.self {{
+            background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
         }}
 
-        .message-header {{
-            display: inline-block;
-            margin-bottom: 4px;
+        .avatar.other {{
+            background: linear-gradient(135deg, #576b95 0%, #4a5c80 100%);
         }}
 
-        .sender {{
-            font-size: 12px;
-            color: #6c757d;
-            margin-right: 8px;
-        }}
-
-        .time {{
-            font-size: 11px;
-            color: #adb5bd;
-        }}
-
-        .message-body {{
-            display: inline-block;
+        /* 消息内容 */
+        .msg-content {{
             max-width: 70%;
-            padding: 12px 16px;
-            border-radius: 12px;
+            position: relative;
+        }}
+
+        .sender-name {{
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+            padding-left: 12px;
+        }}
+
+        .message.self .sender-name {{
+            display: none;
+        }}
+
+        .bubble {{
+            padding: 10px 14px;
+            border-radius: 8px;
             word-wrap: break-word;
             white-space: pre-wrap;
+            font-size: 15px;
+            line-height: 1.5;
+            position: relative;
         }}
 
-        .message.self .message-body {{
-            background: #667eea;
-            color: white;
+        .message.self .bubble {{
+            background: #95ec69;
+            color: #000;
         }}
 
-        .message.other .message-body {{
-            background: #f1f3f4;
-            color: #202124;
+        .message.other .bubble {{
+            background: #fff;
+            color: #000;
         }}
 
-        .message.system .message-body {{
-            background: transparent;
-            padding: 4px 8px;
+        /* 时间 */
+        .time-separator {{
+            text-align: center;
+            padding: 12px 0;
+            font-size: 12px;
+            color: #b2b2b2;
         }}
 
+        /* 底部统计 */
         .footer {{
-            padding: 20px;
-            background: #f8f9fa;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #f7f7f7;
+            border-top: 1px solid #d9d9d9;
+            padding: 12px;
             text-align: center;
             font-size: 12px;
-            color: #6c757d;
+            color: #888;
+            max-width: 800px;
+            margin: 0 auto;
+        }}
+
+        .footer-content {{
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }}
+
+        .stat {{
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }}
+
+        .stat-num {{
+            font-weight: 600;
+            color: #07c160;
+        }}
+
+        /* 响应式 */
+        @media (max-width: 600px) {{
+            .bubble {{
+                max-width: 85%;
+            }}
+            .msg-content {{
+                max-width: 85%;
+            }}
         }}
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="chat-window">
         <div class="header">
-            <h1>{display_name}</h1>
-            <div class="meta">
-                {chat_type} · {start_time} 至 {end_time}
+            <div class="header-content">
+                <div class="avatar-header">{"👥" if is_group else "👤"}</div>
+                <div class="header-info">
+                    <h1>{display_name}</h1>
+                    <div class="meta">{chat_type} · {msg_count}条消息</div>
+                </div>
             </div>
         </div>
 
-        <div class="stats">
-            <div class="stat-item">
-                <div class="number">{msg_count}</div>
-                <div class="label">消息总数</div>
-            </div>
-        </div>
-
-        <div class="chat-container">
+        <div class="bg-area">
+            <div class="chat-container">
 '''
 
     # 添加消息
@@ -312,32 +372,38 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
         # 转义 HTML 特殊字符
         content_html = content_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
-        html += f'''
-            <div class="message {msg_class}">
-                <div class="message-header">
-                    <span class="sender">{msg['sender']}</span>
-                    <span class="time">{msg['time']}</span>
+        # 头像显示发送者首字母
+        avatar_text = msg['sender'][0] if msg['sender'] else "?"
+
+        html += f'''                <div class="message {msg_class}">
+                    <div class="avatar {msg_class}">{avatar_text}</div>
+                    <div class="msg-content">
+                        <div class="sender-name">{msg['sender']}</div>
+                        <div class="bubble">{content_html}</div>
+                    </div>
                 </div>
-                <div class="message-body">
-                    {content_html}
-                </div>
-            </div>
 '''
 
-    html += f'''
+    html += f'''            </div>
         </div>
 
         <div class="footer">
-            导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} · 使用 wechat-cli 生成
+            <div class="footer-content">
+                <div class="stat">
+                    <span>时间范围:</span>
+                    <span>{start_time} ~ {end_time}</span>
+                </div>
+                <div class="stat">
+                    <span>导出时间:</span>
+                    <span>{datetime.now().strftime('%Y-%m-%d %H:%M')}</span>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script>
-        // 滚动到底部(显示最新消息)
-        document.querySelector('.chat-container').scrollTop = document.querySelector('.chat-container').scrollHeight;
-    </script>
-</body>
-</html>'''
+'''
+
+    return html
 
     return html
 
