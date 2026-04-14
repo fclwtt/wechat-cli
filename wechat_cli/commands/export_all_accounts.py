@@ -182,15 +182,16 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
     if session_db_path:
         try:
             with closing(sqlite3.connect(session_db_path)) as conn:
-                # 微信 4.x 表名是 SessionTable（不是 Session）
+                # 微信 4.x SessionTable 只有 username 列，没有 nickname
                 session_rows = conn.execute(
-                    "SELECT username, nickname FROM SessionTable"
+                    "SELECT username FROM SessionTable"
                 ).fetchall()
                 debug_log(f"SessionTable 会话数: {len(session_rows)}")
-                for uname, nick in session_rows:
+                for row in session_rows:
+                    uname = row[0]  # username
                     if uname and uname not in names:
                         # 补充到 names 和 hash_to_username
-                        names[uname] = nick or uname
+                        names[uname] = uname  # 用 username 作为显示名（后续从消息里找昵称）
                         h = hashlib.md5(uname.encode()).hexdigest()
                         hash_to_username[h] = uname
         except Exception as e:
