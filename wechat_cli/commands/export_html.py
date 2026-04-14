@@ -11,6 +11,10 @@ from ..core.messages import (
     parse_time_range,
     resolve_chat_context,
     validate_pagination,
+    _iter_table_contexts,
+    _query_messages,
+    _parse_message_content,
+    _split_msg_type,
 )
 
 
@@ -48,6 +52,8 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
         ctx.exit(1)
 
     names = get_contact_names(app.cache, app.decrypted_dir)
+    
+    # 直接使用已有的 collect_chat_history 函数
     lines, failures = collect_chat_history(
         chat_ctx, names, app.display_name_fn,
         start_ts=start_ts, end_ts=end_ts, limit=limit, offset=0,
@@ -68,12 +74,35 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
     html_dir = out_dir / safe_name
     html_dir.mkdir(parents=True, exist_ok=True)
 
-    # 收集消息详情
-    messages = _collect_message_details(
-        chat_ctx, names, app.display_name_fn,
-        start_ts=start_ts, end_ts=end_ts, limit=limit,
-        db_dir=app.db_dir
-    )
+    # 转换 lines 为 messages 格式
+    messages = []
+    for line in lines:
+        # line 格式: "时间 发送者: 内容"
+        # 解析时间、发送者、内容
+        parts = line.split(' ', 2)
+        if len(parts) >= 3:
+            time_str = parts[0]
+            rest = parts[1] + ' ' + parts[2]
+            # 发送者: 内容
+            if ': ' in rest:
+                sender_part, content = rest.split(': ', 1)
+                is_self = sender_part == '我'
+            else:
+                sender_part = rest
+                content = ''
+                is_self = False
+        else:
+            time_str = parts[0] if parts else ''
+            sender_part = ''
+            content = line
+            is_self = False
+        
+        messages.append({
+            'time': time_str,
+            'sender': sender_part,
+            'content': content,
+            'is_self': is_self,
+        })
 
     # 生成 HTML
     html_content = _generate_html(
@@ -104,126 +133,6 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
     click.echo(f"已导出: {html_file}")
     click.echo(f"Markdown: {md_file}")
     click.echo(f"消息数: {len(messages)}")
-
-
-def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts, limit, db_dir=None):
-    """收集消息详情（纯文字版）"""
-    from ..core.messages import _iter_table_contexts, _query_messages
-
-    messages = []
-    total = 0
-
-    for ctx in _iter_table_contexts(chat_ctx):
-        if not ctx['db_path'] or not ctx['table_name']:
-            continue
-
-        import sqlite3
-        conn = sqlite3.connect(ctx['db_path'])
-
-        rows = _query_messages(
-            conn, ctx['table_name'],
-            start_ts=start_ts, end_ts=end_ts, keyword='', limit=limit, offset=total
-        )
-
-        for row in rows:
-            local_id, local_type, create_time, real_sender_id, content, wcdb_content = row
-
-            # 解析消息类型
-            base_type = local_type & 0xFFFFFFFF
-
-            # 解析内容（纯文字）
-            msg_content = _parse_content_simple(content, base_type)
-
-            # 获取发送者
-            sender_name = display_name_fn(real_sender_id, names) if real_sender_id else "我"
-
-            # 格式化时间
-            msg_time = datetime.fromtimestamp(create_time).strftime('%Y-%m-%d %H:%M:%S')
-
-            messages.append({
-                'time': msg_time,
-                'sender': sender_name,
-                'content': msg_content,
-                'type': base_type,
-                'is_self': not real_sender_id,
-            })
-
-            total += 1
-            if total >= limit:
-                break
-
-        conn.close()
-
-        if total >= limit:
-            break
-
-    return messages
-
-
-def _parse_content_simple(content, base_type):
-    """简化版内容解析（纯文字）"""
-    if not content:
-        return ""
-
-    # 处理 bytes 类型
-    if isinstance(content, bytes):
-        # 尝试 zlib 解压
-        try:
-            import zlib
-            decompressed = zlib.decompress(content, wbits=-15)
-            content = decompressed.decode('utf-8', errors='replace')
-        except:
-            try:
-                import zlib
-                decompressed = zlib.decompress(content[4:], wbits=-15)
-                content = decompressed.decode('utf-8', errors='replace')
-            except:
-                # 解压失败，显示占位符
-                return _get_placeholder(base_type)
-
-    # 文本消息
-    if base_type == 1:
-        return content.strip() if isinstance(content, str) else ""
-
-    # 图片
-    if base_type == 3:
-        return "📷 [图片]"
-
-    # 视频
-    if base_type == 43:
-        return "🎬 [视频]"
-
-    # 文件/链接/小程序（type=49，无法解析压缩内容）
-    if base_type == 49:
-        return "📎 [分享]"
-
-    # 语音
-    if base_type == 34:
-        return "🎤 [语音]"
-
-    # 表情
-    if base_type == 47:
-        return "😀 [表情]"
-
-    # 系统
-    if base_type == 10000:
-        return content.strip() if isinstance(content, str) else ""
-
-    return f"[消息]"
-
-
-def _get_placeholder(base_type):
-    """获取媒体占位符"""
-    placeholders = {
-        1: "[文本]",
-        3: "📷 [图片]",
-        34: "🎤 [语音]",
-        43: "🎬 [视频]",
-        47: "😀 [表情]",
-        49: "📎 [分享]",
-        10000: "[系统消息]",
-    }
-    return placeholders.get(base_type, "[消息]")
 
 
 def _generate_html(display_name, is_group, start_time, end_time, messages):
@@ -397,7 +306,7 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
 
     # 添加消息
     for msg in messages:
-        msg_class = "self" if msg['is_self'] else ("system" if msg['type'] == 10000 else "other")
+        msg_class = "self" if msg['is_self'] else "other"
         content_html = msg['content']
 
         # 转义 HTML 特殊字符
@@ -453,8 +362,6 @@ def _generate_markdown(display_name, is_group, start_time, end_time, messages):
         # 发送者标记
         if msg['is_self']:
             sender_mark = "**我**"
-        elif msg['type'] == 10000:
-            sender_mark = "*系统*"
         else:
             sender_mark = f"**{sender}**"
 
