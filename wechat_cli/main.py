@@ -30,8 +30,9 @@ def cli(ctx, config_path):
       wechat-cli new-messages                       # 获取增量新消息
       wechat-cli export-html "张三"               # 导出为 HTML 页面
     """
-    # init/version 命令不需要 AppContext
-    if ctx.invoked_subcommand in ("init", "version"):
+    # init/version/export-all-accounts 命令不需要 AppContext
+    # export-all-accounts 使用 load_account_config(wxid) 加载多账号配置
+    if ctx.invoked_subcommand in ("init", "version", "export-all-accounts"):
         return
 
     try:
