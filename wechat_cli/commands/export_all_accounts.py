@@ -175,7 +175,27 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
         hash_to_username[h] = uname
 
     debug_log(f"联系人数量: {len(names)}")
-    debug_log(f"hash_to_username 示例: {list(hash_to_username.items())[:3]}")
+
+    # 尝试从 session.db 获取会话列表（补充 hash_to_username）
+    session_db_key = os.path.join("session", "session.db")
+    session_db_path = cache.get(session_db_key)
+    if session_db_path:
+        try:
+            with closing(sqlite3.connect(session_db_path)) as conn:
+                session_rows = conn.execute(
+                    "SELECT username, nickname FROM Session"
+                ).fetchall()
+                debug_log(f"Session 表会话数: {len(session_rows)}")
+                for uname, nick in session_rows:
+                    if uname and uname not in names:
+                        # 补充到 names 和 hash_to_username
+                        names[uname] = nick or uname
+                        h = hashlib.md5(uname.encode()).hexdigest()
+                        hash_to_username[h] = uname
+        except Exception as e:
+            debug_log(f"读取 session.db 失败: {e}")
+
+    debug_log(f"hash_to_username 总数: {len(hash_to_username)}")
 
     chats = []
     for db_key in msg_db_keys:
@@ -197,9 +217,10 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                     # 用 hash 反查 username
                     chat_username = hash_to_username.get(table_hash)
                     if not chat_username:
-                        # 没找到匹配的联系人，跳过
-                        debug_log(f"表 {table_name} hash={table_hash} 没匹配到联系人")
-                        continue
+                        # 没找到匹配的联系人，用 hash 作为 username（导出未知聊天）
+                        chat_username = f"unknown_{table_hash}"
+                        names[chat_username] = chat_username
+                        debug_log(f"表 {table_name} hash={table_hash} 没匹配到联系人，用 hash 作为 username")
 
                     # 获取最新消息时间
                     try:
