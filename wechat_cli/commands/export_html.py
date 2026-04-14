@@ -120,6 +120,9 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
     from ..core.messages import _iter_table_contexts, _query_messages, _format_message_text
     import hashlib
 
+    # 调试输出
+    debug = True  # 临时启用调试
+    
     messages = []
     total = 0
 
@@ -165,7 +168,16 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
             media_copied = False
 
             if base_type in (3, 43, 49):  # 图片、视频、文件
-                original_path = _resolve_media_path(db_dir, content, base_type, create_time, ctx['username'])
+                # 调试输出
+                if debug and base_type == 3:
+                    print(f"    [DEBUG] Found image: create_time={create_time}, username={ctx.get('username')}")
+                    print(f"    [DEBUG] db_dir={db_dir}")
+                    
+                original_path = _resolve_media_path(db_dir, content, base_type, create_time, ctx.get('username'), debug=debug)
+                
+                if debug and base_type == 3:
+                    print(f"    [DEBUG] original_path={original_path}")
+                    
                 if original_path:
                     media_type = 'image' if base_type == 3 else ('video' if base_type == 43 else 'file')
                     
@@ -282,20 +294,30 @@ def _parse_content(content, base_type, sub_type):
     return f"[消息] {content[:100]}"
 
 
-def _resolve_media_path(db_dir, content, base_type, create_time, chat_username=None):
+def _resolve_media_path(db_dir, content, base_type, create_time, chat_username=None, debug=False):
     """解析媒体文件路径，返回具体文件路径"""
     from datetime import datetime
     import hashlib
     import xml.etree.ElementTree as ET
     import glob
 
+    if debug:
+        print(f"    [DEBUG] _resolve_media_path: db_dir={db_dir}, base_type={base_type}, create_time={create_time}, username={chat_username}")
+
     if not db_dir:
+        if debug:
+            print("    [DEBUG] db_dir is None, return None")
         return None
 
     wechat_base = Path(db_dir).parent
     msg_dir = wechat_base / "msg"
 
+    if debug:
+        print(f"    [DEBUG] wechat_base={wechat_base}, msg_dir={msg_dir}, exists={msg_dir.exists()}")
+
     if not msg_dir.exists():
+        if debug:
+            print("    [DEBUG] msg_dir not exists")
         return None
 
     dt = datetime.fromtimestamp(create_time)
