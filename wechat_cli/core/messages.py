@@ -343,10 +343,24 @@ def _format_message_text(local_id, local_type, content, is_group, chat_username,
             text, local_type, is_group, chat_username, chat_display_name, names, display_name_fn,
             resolve_media=resolve_media, db_dir=db_dir, create_time_ts=create_time_ts
         ) or "[链接/文件]"
+    elif base_type == 10000:
+        # 系统消息，检查是否是撤回消息
+        if content and 'revokemsg' in content:
+            root = _parse_xml_root(content)
+            if root is not None:
+                revoke_content = root.findtext('.//content') or ''
+                if revoke_content:
+                    # 提取撤回内容，如 "刘嵩" 撤回了一条消息
+                    text = f"[撤回] {revoke_content}"
+                    sender = ''  # 发送者清空，不归属自己或对方
+                    return sender, text
+        # 其他系统消息
+        type_label = format_msg_type(local_type)
+        text = f"[{type_label}] {text}" if text else f"[{type_label}]"
     elif base_type == 10002:
-        # 撤回消息，添加特殊标记
-        print(f"[DEBUG 撤回] base_type={base_type}, content={content[:100] if content else None}")
+        # 撤回消息（另一种格式）
         text = f"[撤回] {text}" if text else "[撤回]"
+        sender = ''  # 发送者清空
     elif base_type != 1:
         type_label = format_msg_type(local_type)
         text = f"[{type_label}] {text}" if text else f"[{type_label}]"
