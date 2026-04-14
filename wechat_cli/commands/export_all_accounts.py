@@ -176,24 +176,26 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
 
     debug_log(f"联系人数量: {len(names)}")
 
-    # 尝试从 session.db 获取会话列表（补充 hash_to_username）
+    # 尝试从 session.db 获取会话列表（补充 hash_to_username 和昵称）
     session_db_key = os.path.join("session", "session.db")
     session_db_path = cache.get(session_db_key)
     if session_db_path:
         try:
             with closing(sqlite3.connect(session_db_path)) as conn:
-                # 微信 4.x SessionTable 只有 username 列，没有 nickname
+                # 微信 4.x SessionTable: username + last_sender_display_name
                 session_rows = conn.execute(
-                    "SELECT username FROM SessionTable"
+                    "SELECT username, last_sender_display_name FROM SessionTable"
                 ).fetchall()
                 debug_log(f"SessionTable 会话数: {len(session_rows)}")
-                for row in session_rows:
-                    uname = row[0]  # username
+                for uname, display_name in session_rows:
                     if uname and uname not in names:
-                        # 补充到 names 和 hash_to_username
-                        names[uname] = uname  # 用 username 作为显示名（后续从消息里找昵称）
+                        # 补充到 names（用 last_sender_display_name 或 username）
+                        names[uname] = display_name if display_name else uname
                         h = hashlib.md5(uname.encode()).hexdigest()
                         hash_to_username[h] = uname
+                    elif uname and display_name and names.get(uname) == uname:
+                        # 如果已有 username 作为显示名，用 last_sender_display_name 替换
+                        names[uname] = display_name
         except Exception as e:
             debug_log(f"读取 session.db 失败: {e}")
 
