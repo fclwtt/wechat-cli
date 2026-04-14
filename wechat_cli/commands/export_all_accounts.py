@@ -293,7 +293,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                     is_self = False
                 
                 messages.append({
-                    'time': time_str,
+                    'time': time_str.replace('[', '').replace(']', ''),
                     'sender': sender_part,
                     'content': content,
                     'is_self': is_self,

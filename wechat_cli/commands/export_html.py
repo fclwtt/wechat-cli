@@ -98,7 +98,7 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
             is_self = False
         
         messages.append({
-            'time': time_str,
+            'time': time_str.replace('[', '').replace(']', ''),
             'sender': sender_part,
             'content': content,
             'is_self': is_self,
@@ -215,8 +215,11 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
 
         /* 背景区域 */
         .bg-area {{
-            background: #ededed;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23ededed" width="100" height="100"/><circle cx="25" cy="25" r="20" fill="%23e0e0e0" opacity="0.3"/><circle cx="75" cy="75" r="30" fill="%23e0e0e0" opacity="0.2"/></svg>') repeat;
+            background-size: 200px;
+            background-color: #ededed;
             padding-bottom: 60px;
+            min-height: calc(100vh - 120px);
         }}
 
         /* 消息区域 */
@@ -372,11 +375,11 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
         # 转义 HTML 特殊字符
         content_html = content_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
-        # 头像显示发送者首字母
-        avatar_text = msg['sender'][0] if msg['sender'] else "?"
+        # 头像图标
+        avatar_icon = "💬" if msg['is_self'] else "👤"
 
         html += f'''                <div class="message {msg_class}">
-                    <div class="avatar {msg_class}">{avatar_text}</div>
+                    <div class="avatar {msg_class}">{avatar_icon}</div>
                     <div class="msg-content">
                         <div class="sender-name">{msg['sender']}</div>
                         <div class="bubble">{content_html}</div>
