@@ -66,6 +66,13 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
         start_ts=start_ts, end_ts=end_ts, limit=limit, offset=0,
     )
 
+    # 调试输出（临时）
+    click.echo(f"[DEBUG] self_username = {self_username}")
+    click.echo(f"[DEBUG] chat_username = {chat_ctx['username']}")
+    click.echo(f"[DEBUG] 消息示例（前3条）:")
+    for line in lines[:3]:
+        click.echo(f"  {line}")
+
     if not lines:
         click.echo(f"{chat_ctx['display_name']} 无消息记录", err=True)
         ctx.exit(0)
