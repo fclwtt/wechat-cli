@@ -412,6 +412,7 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
 
         /* 撤回消息：居中、醒目颜色 */
         .message.recall {{
+            display: block;  /* 覆盖 flex 布局 */
             text-align: center;
             margin: 16px 0;
         }}
