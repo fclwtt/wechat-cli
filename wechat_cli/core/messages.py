@@ -168,7 +168,10 @@ def _format_app_message_text(content, local_type, is_group, chat_username, chat_
         ref_display_name = ''
         if ref is not None:
             ref_display_name = (ref.findtext('displayname') or '').strip()
-            ref_content = _collapse_text(ref.findtext('content') or '')
+            ref_content_raw = ref.findtext('content') or ''
+            # 清理 XML 标签（如 <msg>...</msg>）
+            ref_content = re.sub(r'<[^>]+>', '', ref_content_raw)
+            ref_content = _collapse_text(ref_content)
         if len(ref_content) > 160:
             ref_content = ref_content[:160] + "..."
         quote_text = title or "[引用消息]"
