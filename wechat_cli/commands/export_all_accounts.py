@@ -15,12 +15,11 @@ from ..core.messages import resolve_chat_context
 @click.command("export-all-accounts")
 @click.option("--output", "output_path", default=None, help="输出目录路径")
 @click.option("--limit", default=2000, help="每个聊天导出的消息数量")
-@click.option("--copy-media", is_flag=True, help="复制图片/文件到输出目录")
 @click.option("--max-chats", default=100, help="每个账号最多导出多少个聊天")
 @click.option("--start-time", default=None, help="开始时间 (YYYY-MM-DD)")
 @click.option("--end-time", default=None, help="结束时间 (YYYY-MM-DD)")
 @click.option("--debug", is_flag=True, help="显示详细调试信息")
-def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, end_time, debug):
+def export_all_accounts(output_path, limit, max_chats, start_time, end_time, debug):
     """导出所有账号的聊天记录为 HTML 页面
 
     \b
@@ -90,7 +89,7 @@ def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, e
         click.echo("-" * 40)
 
         try:
-            _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts, end_ts, start_time, end_time, debug)
+            _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, debug)
         except Exception as e:
             click.echo(f"  导出失败: {e}", err=True)
 
@@ -105,7 +104,7 @@ def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, e
     click.echo("  2. 进入账号目录 → 聊天目录 → 双击 index.html")
 
 
-def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=None, end_ts=None, start_time=None, end_time=None, debug=False):
+def _export_account(wxid, output_dir, limit, max_chats, start_ts=None, end_ts=None, start_time=None, end_time=None, debug=False):
     """导出单个账号的所有聊天"""
     import json
     from .export_html import _collect_message_details, _generate_html, _generate_markdown
@@ -204,17 +203,11 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=Non
             # 创建聊天目录
             chat_dir.mkdir(parents=True, exist_ok=True)
 
-            # 媒体目录
-            media_dir = None
-            if copy_media:
-                media_dir = chat_dir / "media"
-                media_dir.mkdir(exist_ok=True)
-
             # 收集消息详情
             messages = _collect_message_details(
                 chat_ctx, names, display_name_fn,
                 start_ts=start_ts, end_ts=end_ts, limit=limit,
-                db_dir=db_dir, copy_media=copy_media, media_dir=media_dir
+                db_dir=db_dir
             )
 
             if not messages:
@@ -228,7 +221,6 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=Non
                 start_time or "最早",
                 end_time or "最新",
                 messages,
-                copy_media
             )
 
             # 写入 HTML 文件
@@ -242,7 +234,6 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=Non
                 start_time or "最早",
                 end_time or "最新",
                 messages,
-                copy_media
             )
 
             # 写入 Markdown 文件
