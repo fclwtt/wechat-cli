@@ -255,6 +255,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                 'table_name': chat_info['table_name'],
                 'message_tables': [{'db_path': chat_info['db_path'], 'table_name': chat_info['table_name']}],
                 'is_group': '@chatroom' in chat_info['username'],
+                'self_username': self_username,
             }
 
             # 创建聊天目录

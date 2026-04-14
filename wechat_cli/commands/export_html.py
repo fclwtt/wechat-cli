@@ -47,6 +47,9 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
     if not chat_ctx:
         click.echo(f"找不到聊天对象: {chat_name}", err=True)
         ctx.exit(1)
+    
+    # 添加 self_username 到 chat_ctx
+    chat_ctx['self_username'] = self_username
     if not chat_ctx['db_path']:
         click.echo(f"找不到 {chat_ctx['display_name']} 的消息记录", err=True)
         ctx.exit(1)
