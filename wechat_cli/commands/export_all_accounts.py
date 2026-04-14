@@ -19,8 +19,9 @@ from ..core.messages import resolve_chat_context, collect_chat_history, parse_ti
 @click.option("--max-chats", default=100, help="每个账号最多导出多少个聊天")
 @click.option("--start-time", default=None, help="开始时间 (YYYY-MM-DD)")
 @click.option("--end-time", default=None, help="结束时间 (YYYY-MM-DD)")
+@click.option("--only-active", is_flag=True, help="只导出指定时间范围内有消息的聊天")
 @click.option("--debug", is_flag=True, help="显示详细调试信息")
-def export_all_accounts(output_path, limit, max_chats, start_time, end_time, debug):
+def export_all_accounts(output_path, limit, max_chats, start_time, end_time, only_active, debug):
     """导出所有账号的聊天记录为 HTML 页面（纯文字版）
 
     \b
@@ -208,6 +209,19 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                         if row and row[1] > 0:
                             max_time = row[0]
                             count = row[1]
+                            
+                            # 如果指定了 --only-active，检查时间范围内是否有消息
+                            if only_active and start_ts and end_ts:
+                                active_row = conn.execute(
+                                    f"SELECT COUNT(*) FROM [{table_name}] WHERE create_time >= ? AND create_time <= ?",
+                                    [start_ts, end_ts]
+                                ).fetchone()
+                                active_count = active_row[0] if active_row else 0
+                                if active_count == 0:
+                                    # 时间范围内无消息，跳过
+                                    debug_log(f"跳过 {table_name}: 时间范围内无消息")
+                                    continue
+                                debug_log(f"{table_name}: 时间范围内有 {active_count} 条消息")
                             
                             display_name = display_name_fn(chat_username, names)
                             

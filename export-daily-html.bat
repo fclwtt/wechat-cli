@@ -17,10 +17,10 @@ if not exist "%~dp0wechat-cli.exe" (
 
 set CLI_PATH=%~dp0wechat-cli.exe
 
-REM 计算最近7天的起始日期
-for /f "tokens=*" %%a in ('powershell -command "(Get-Date).AddDays(-7).ToString('yyyy-MM-dd')"') do set START_DATE=%%a
+REM 计算昨天的日期（每日导出昨天有新消息的聊天）
+for /f "tokens=*" %%a in ('powershell -command "(Get-Date).AddDays(-1).ToString('yyyy-MM-dd')"') do set YESTERDAY=%%a
 
-echo 导出范围: %START_DATE% 至今（最近7天）
+echo 导出日期: %YESTERDAY%（昨天）
 echo.
 
 REM 设置输出目录（与全量导出同一目录）
@@ -29,11 +29,11 @@ echo 输出目录: %OUTPUT_DIR%
 echo.
 
 echo 正在更新聊天记录...
-echo 说明：本次导出会覆盖已有的 HTML 文件，更新为最新内容
+echo 说明：只导出昨天有新消息的聊天，覆盖更新已有 HTML 文件
 echo.
 
-REM 运行每日更新（导出到全量目录，最近7天）
-"%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%" --limit 2000 --max-chats 100 --start-time "%START_DATE%"
+REM 运行每日更新（只导出昨天有消息的聊天，覆盖更新）
+"%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%" --limit 2000 --max-chats 100 --start-time "%YESTERDAY%" --end-time "%YESTERDAY%" --only-active
 
 echo.
 echo ============================================================
@@ -43,9 +43,9 @@ echo.
 echo 输出目录: %OUTPUT_DIR%
 echo.
 echo 说明：
-echo   - 已更新最近7天有新消息的聊天记录
+echo   - 只更新了昨天有新消息的聊天记录
 echo   - HTML 文件已覆盖更新（保留最新内容）
-echo   - 无新消息的聊天不会更新
+echo   - 无新消息的聊天不会更新（节省时间）
 echo.
 echo 正在打开输出文件夹...
 explorer "%OUTPUT_DIR%"
