@@ -157,6 +157,18 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
     # 查找所有聊天
     click.echo(f"  [1/2] 查找聊天会话...")
 
+    # 先构建 username -> MD5 hash 映射
+    import hashlib
+    username_to_hash = {}
+    hash_to_username = {}
+    for uname in names.keys():
+        h = hashlib.md5(uname.encode()).hexdigest()
+        username_to_hash[uname] = h
+        hash_to_username[h] = uname
+
+    debug_log(f"联系人数量: {len(names)}")
+    debug_log(f"hash_to_username 示例: {list(hash_to_username.items())[:3]}")
+
     chats = []
     for db_key in msg_db_keys:
         db_path = cache.get(db_key)
@@ -171,6 +183,16 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                 ).fetchall()
 
                 for (table_name,) in tables:
+                    # 从表名提取 hash (Msg_xxx)
+                    table_hash = table_name.replace('Msg_', '')
+                    
+                    # 用 hash 反查 username
+                    chat_username = hash_to_username.get(table_hash)
+                    if not chat_username:
+                        # 没找到匹配的联系人，跳过
+                        debug_log(f"表 {table_name} hash={table_hash} 没匹配到联系人")
+                        continue
+
                     # 获取最新消息时间
                     try:
                         row = conn.execute(
@@ -180,30 +202,6 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                             max_time = row[0]
                             count = row[1]
                             
-                            # 获取聊天对象名
-                            chat_username = None
-                            try:
-                                # 尝试从多条消息中获取不同的 talker
-                                talkers = conn.execute(
-                                    f"SELECT DISTINCT talker FROM [{table_name}] LIMIT 10"
-                                ).fetchall()
-                                if talkers:
-                                    # 找到最频繁的 talker（通常是聊天对象）
-                                    talker_counts = {}
-                                    for t in talkers:
-                                        t_name = t[0]
-                                        if t_name:
-                                            talker_counts[t_name] = talker_counts.get(t_name, 0) + 1
-                                    if talker_counts:
-                                        # 取出现次数最多的 talker
-                                        chat_username = max(talker_counts.keys(), key=lambda k: talker_counts[k])
-                            except Exception as e:
-                                if debug:
-                                    debug_log(f"获取 talker 失败: {e}")
-
-                            if not chat_username:
-                                chat_username = table_name
-
                             display_name = display_name_fn(chat_username, names)
                             
                             chats.append({
@@ -214,8 +212,9 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                                 'max_time': max_time,
                                 'count': count,
                             })
-                    except:
-                        pass
+                    except Exception as e:
+                        if debug:
+                            debug_log(f"查询 {table_name} 失败: {e}")
         except Exception as e:
             if debug:
                 debug_log(f"读取 {db_key} 失败: {e}")
