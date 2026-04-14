@@ -9,7 +9,7 @@ from datetime import datetime
 
 from ..core.config import ACCOUNTS_DIR, ACCOUNTS_INDEX_FILE, list_accounts, load_account_config
 from ..core.db_cache import DBCache
-from ..core.contacts import get_contact_names
+from ..core.contacts import get_contact_names, get_self_username
 from ..core.messages import resolve_chat_context, collect_chat_history, parse_time_range
 
 
@@ -142,6 +142,10 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
 
     # 获取联系人名称
     names = get_contact_names(cache, decrypted_dir)
+
+    # 获取账号自己的 username
+    self_username = get_self_username(db_dir, cache, decrypted_dir)
+    debug_log(f"账号自己的 username: {self_username}")
 
     # 显示名函数
     def display_name_fn(username, names_dict):
@@ -289,11 +293,20 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                 # 判断发送者和是否是自己
                 if ': ' in line_content:
                     sender_part, content = line_content.split(': ', 1)
-                    is_self = sender_part == '我' or (is_group_chat is False and sender_part == '')
+                    # 群聊：发送者 == self_username 或 '我' = 自己
+                    # 私聊：发送者 == self_username 或 '我' 或 '' = 自己
+                    if is_group_chat:
+                        is_self = sender_part == self_username or sender_part == '我'
+                    else:
+                        # 私聊：发送者 != 聊天对象名 = 自己
+                        # 或者发送者 == self_username 或 '我' 或 ''
+                        is_self = sender_part == self_username or sender_part == '我' or sender_part == ''
                 else:
+                    # 没有发送者前缀
                     sender_part = ''
                     content = line_content
-                    is_self = is_group_chat is False
+                    # 私聊中无发送者 = 自己发的消息
+                    is_self = not is_group_chat
                 
                 messages.append({
                     'time': time_str,

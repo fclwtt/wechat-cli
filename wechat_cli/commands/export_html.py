@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from ..core.contacts import get_contact_names
+from ..core.contacts import get_contact_names, get_self_username
 from ..core.messages import (
     collect_chat_history,
     parse_time_range,
@@ -52,7 +52,10 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
         ctx.exit(1)
 
     names = get_contact_names(app.cache, app.decrypted_dir)
-    
+
+    # 获取账号自己的 username
+    self_username = get_self_username(app.db_dir, app.cache, app.decrypted_dir)
+
     # 直接使用已有的 collect_chat_history 函数
     lines, failures = collect_chat_history(
         chat_ctx, names, app.display_name_fn,
@@ -94,14 +97,18 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
         # 判断发送者和是否是自己
         if ': ' in line_content:
             sender_part, content = line_content.split(': ', 1)
-            # 私聊中 "我" 或群聊中需要判断
-            is_self = sender_part == '我' or (is_group_chat is False and sender_part == '')
+            # 群聊：发送者 == self_username 或 '我' = 自己
+            # 私聊：发送者 == self_username 或 '我' 或 '' = 自己
+            if is_group_chat:
+                is_self = sender_part == self_username or sender_part == '我'
+            else:
+                is_self = sender_part == self_username or sender_part == '我' or sender_part == ''
         else:
-            # 没有发送者前缀，可能是自己发送的消息（私聊）
+            # 没有发送者前缀
             sender_part = ''
             content = line_content
-            # 私聊且没有发送者 = 自己发的消息
-            is_self = is_group_chat is False
+            # 私聊中无发送者 = 自己发的消息
+            is_self = not is_group_chat
         
         
         messages.append({
@@ -163,8 +170,59 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
 
         body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
-            background: #ededed;
+            background: linear-gradient(135deg, #0c0c1e 0%, #1a1a3e 30%, #2d2d5e 60%, #0f0f2e 100%);
             min-height: 100vh;
+            position: relative;
+        }}
+
+        /* 全屏科技感网格背景 */
+        body::before {{
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(100,150,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(100,150,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+        }}
+
+        /* 光晕效果 */
+        body::after {{
+            content: '';
+            position: fixed;
+            top: 30%;
+            left: 20%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(102,126,234,0.08) 0%, transparent 70%);
+            z-index: -1;
+            animation: glow1 8s ease-in-out infinite alternate;
+        }}
+
+        /* 第二个光晕 */
+        .glow2 {{
+            position: fixed;
+            bottom: 20%;
+            right: 10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(118,75,162,0.08) 0%, transparent 70%);
+            z-index: -1;
+            animation: glow2 6s ease-in-out infinite alternate;
+        }}
+
+        @keyframes glow1 {{
+            0% {{ transform: translate(0, 0); opacity: 0.5; }}
+            100% {{ transform: translate(50px, 30px); opacity: 0.8; }}
+        }}
+
+        @keyframes glow2 {{
+            0% {{ transform: translate(0, 0); opacity: 0.5; }}
+            100% {{ transform: translate(-30px, 50px); opacity: 0.8; }}
         }}
 
         .chat-window {{
@@ -221,40 +279,10 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
             color: rgba(255,255,255,0.7);
         }}
 
-        /* 背景区域 - 科技感设计 */
+        /* 背景区域 */
         .bg-area {{
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             padding-bottom: 60px;
             min-height: calc(100vh - 120px);
-            position: relative;
-        }}
-
-        /* 科技感网格背景 */
-        .bg-area::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
-        }}
-
-        /* 光晕效果 */
-        .bg-area::after {{
-            content: '';
-            position: absolute;
-            top: 20%;
-            left: 50%;
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(102,126,234,0.15) 0%, transparent 70%);
-            transform: translateX(-50%);
-            pointer-events: none;
         }}
 
         /* 消息区域 */
@@ -306,14 +334,25 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
             position: relative;
         }}
 
-        .sender-name {{
-            font-size: 12px;
-            color: rgba(255,255,255,0.7);
+        .msg-meta {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
             margin-bottom: 4px;
             padding-left: 12px;
         }}
 
-        .message.self .sender-name {{
+        .sender-name {{
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+        }}
+
+        .msg-time {{
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+        }}
+
+        .message.self .msg-meta {{
             display: none;
         }}
 
@@ -392,6 +431,7 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
     </style>
 </head>
 <body>
+    <div class="glow2"></div>
     <div class="chat-window">
         <div class="header">
             <div class="header-content">
@@ -421,7 +461,10 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
         html += f'''                <div class="message {msg_class}">
                     <div class="avatar {msg_class}">{avatar_icon}</div>
                     <div class="msg-content">
-                        <div class="sender-name">{msg['sender']}</div>
+                        <div class="msg-meta">
+                            <div class="sender-name">{msg['sender']}</div>
+                            <div class="msg-time">{msg['time']}</div>
+                        </div>
                         <div class="bubble">{content_html}</div>
                     </div>
                 </div>
