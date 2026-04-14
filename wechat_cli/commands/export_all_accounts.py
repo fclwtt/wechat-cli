@@ -15,8 +15,8 @@ from ..core.messages import resolve_chat_context, collect_chat_history, parse_ti
 
 @click.command("export-all-accounts")
 @click.option("--output", "output_path", default=None, help="输出目录路径")
-@click.option("--limit", default=2000, help="每个聊天导出的消息数量")
-@click.option("--max-chats", default=100, help="每个账号最多导出多少个聊天")
+@click.option("--limit", default=None, help="每个聊天导出的消息数量（默认无限制）")
+@click.option("--max-chats", default=None, help="每个账号最多导出多少个聊天（默认无限制）")
 @click.option("--start-time", default=None, help="开始时间 (YYYY-MM-DD)")
 @click.option("--end-time", default=None, help="结束时间 (YYYY-MM-DD)")
 @click.option("--only-active", is_flag=True, help="只导出指定时间范围内有消息的聊天")
@@ -266,7 +266,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
 
     click.echo(f"  找到 {len(chats)} 个会话")
 
-    if len(chats) > max_chats:
+    if max_chats and len(chats) > max_chats:
         click.echo(f"  只导出前 {max_chats} 个（--max-chats 限制）")
         chats = chats[:max_chats]
 

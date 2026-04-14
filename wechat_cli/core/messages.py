@@ -528,12 +528,17 @@ def _iter_table_contexts(ctx):
 
 
 def _candidate_page_size(limit, offset):
+    if limit is None:
+        return 10_000_000 + offset  # 无限制时用大数值
     return limit + offset
 
 
 def _page_ranked_entries(entries, limit, offset):
     ordered = sorted(entries, key=lambda item: item[0], reverse=True)
-    paged = ordered[offset:offset + limit]
+    if limit is None:
+        paged = ordered[offset:]  # 无限制时切片到末尾
+    else:
+        paged = ordered[offset:offset + limit]
     paged.sort(key=lambda item: item[0])
     return paged
 
