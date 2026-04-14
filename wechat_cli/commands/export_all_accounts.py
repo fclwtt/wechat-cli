@@ -137,7 +137,7 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=Non
     debug_log(f"cache initialized")
 
     # 获取 msg_db_keys
-    msg_db_keys = [k for k in keys_json.keys() if k.startswith("message/")]
+    msg_db_keys = [k for k in keys_json.keys() if k.startswith("message/") or k.startswith("message\\")]
     debug_log(f"msg_db_keys count = {len(msg_db_keys)}")
     if msg_db_keys:
         debug_log(f"msg_db_keys sample: {msg_db_keys[:3]}...")
