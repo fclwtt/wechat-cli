@@ -10,7 +10,7 @@ JPG_HEADER = bytes([0xFF, 0xD8, 0xFF])
 PNG_HEADER = bytes([0x89, 0x50, 0x4E, 0x47])
 
 
-def decode_dat_file(dat_path, output_path=None):
+def decode_dat_file(dat_path, output_path=None, debug=False):
     """解码微信 .dat 图片文件
 
     Args:
@@ -21,13 +21,21 @@ def decode_dat_file(dat_path, output_path=None):
         str: 解码后的图片路径，失败返回 None
     """
     if not os.path.exists(dat_path):
+        if debug:
+            print(f"      [decode] 文件不存在: {dat_path}")
         return None
 
     try:
         with open(dat_path, 'rb') as f:
             data = f.read()
 
+        if debug:
+            print(f"      [decode] 暴力破解: 文件大小={len(data)} bytes")
+            print(f"      [decode] 暴力破解: 前10字节(hex): {data[:10].hex()}")
+
         if len(data) < 10:
+            if debug:
+                print(f"      [decode] 暴力破解: 文件太小")
             return None
 
         # 尝试不同的 XOR 密钥
@@ -48,6 +56,8 @@ def decode_dat_file(dat_path, output_path=None):
                 with open(output_path, 'wb') as f:
                     f.write(decoded_data)
 
+                if debug:
+                    print(f"      [decode] 暴力破解成功! XOR密钥=0x{xor_key:02X}")
                 return output_path
 
             # 检查是否是 PNG 头（需要解码前4个字节）
@@ -62,23 +72,30 @@ def decode_dat_file(dat_path, output_path=None):
                     with open(output_path, 'wb') as f:
                         f.write(decoded_data)
 
+                    if debug:
+                        print(f"      [decode] 暴力破解PNG成功! XOR密钥=0x{xor_key:02X}")
                     return output_path
 
         # 没找到正确的 XOR 密钥
+        if debug:
+            print(f"      [decode] 暴力破解失败: 所有256个密钥都不匹配")
         return None
 
     except Exception as e:
-        print(f"解码失败: {e}")
+        if debug:
+            print(f"      [decode] 暴力破解异常: {e}")
         return None
 
 
-def decode_dat_file_fast(dat_path, output_path=None):
+def decode_dat_file_fast(dat_path, output_path=None, debug=False):
     """快速解码 — 基于常见 XOR 密钥
 
     微信 3.x 版本常用 XOR 密钥:
     - 图片: 0x1F, 0xAB, 0xAC 等
     """
     if not os.path.exists(dat_path):
+        if debug:
+            print(f"      [decode] 文件不存在: {dat_path}")
         return None
 
     # 常见 XOR 密钥列表
@@ -88,7 +105,13 @@ def decode_dat_file_fast(dat_path, output_path=None):
         with open(dat_path, 'rb') as f:
             data = f.read()
 
+        if debug:
+            print(f"      [decode] 文件大小: {len(data)} bytes")
+            print(f"      [decode] 前10字节(hex): {data[:10].hex()}")
+
         if len(data) < 10:
+            if debug:
+                print(f"      [decode] 文件太小")
             return None
 
         for xor_key in COMMON_KEYS:
@@ -103,12 +126,18 @@ def decode_dat_file_fast(dat_path, output_path=None):
                 with open(output_path, 'wb') as f:
                     f.write(decoded_data)
 
+                if debug:
+                    print(f"      [decode] 成功! XOR密钥=0x{xor_key:02X}")
                 return output_path
 
         # 如果常见密钥都不行，用暴力破解
-        return decode_dat_file(dat_path, output_path)
+        if debug:
+            print(f"      [decode] 常见密钥失败，尝试暴力破解...")
+        return decode_dat_file(dat_path, output_path, debug=debug)
 
     except Exception as e:
+        if debug:
+            print(f"      [decode] 异常: {e}")
         return None
 
 

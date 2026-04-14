@@ -197,7 +197,7 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
                                 print(f"    [DEBUG] 解码: {original_path} -> {decoded_path}")
                             
                             # 解码图片
-                            decoded = decode_dat_file_fast(original_path, str(decoded_path))
+                            decoded = decode_dat_file_fast(original_path, str(decoded_path), debug=True)
                             
                             if debug:
                                 print(f"    [DEBUG] 解码结果: {decoded}")
