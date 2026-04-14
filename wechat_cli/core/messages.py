@@ -366,19 +366,13 @@ def _load_name2id_maps(conn):
 def _resolve_sender_label(real_sender_id, sender_from_content, is_group, chat_username, chat_display_name, names, id_to_username, display_name_fn, self_username=''):
     sender_username = id_to_username.get(real_sender_id, '')
     
-    # 调试输出（临时）
-    if '文老师' in chat_display_name:
-        print(f"[DEBUG _resolve_sender_label]")
-        print(f"  sender_username = {sender_username}")
-        print(f"  self_username = {self_username}")
-        print(f"  chat_username = {chat_username}")
-        print(f"  is_group = {is_group}")
-        print(f"  sender_username == self_username = {sender_username == self_username}")
+    # 获取自己的昵称
+    self_display_name = display_name_fn(self_username, names) if self_username else '我'
     
     if is_group:
         if sender_username and sender_username != chat_username:
             if sender_username == self_username:
-                return '我'  # 群聊中自己发的消息
+                return self_display_name  # 群聊中自己发的消息，显示自己的昵称
             return display_name_fn(sender_username, names)
         if sender_from_content:
             return display_name_fn(sender_from_content, names)
@@ -387,11 +381,11 @@ def _resolve_sender_label(real_sender_id, sender_from_content, is_group, chat_us
     if sender_username == chat_username:
         return chat_display_name  # 对方发的消息
     if sender_username == self_username:
-        return '我'  # 自己发的消息
+        return self_display_name  # 自己发的消息，显示自己的昵称
     if sender_username:
         return display_name_fn(sender_username, names)  # 其他人（不太可能）
     # 私聊中发送者为空 = 自己发的消息
-    return '我'
+    return self_display_name
 
 
 # ---- SQL 查询 ----

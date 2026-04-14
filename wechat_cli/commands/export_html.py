@@ -52,10 +52,6 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
 
     # 获取账号自己的 username
     self_username = get_self_username(app.db_dir, app.cache, app.decrypted_dir)
-    
-    # 调试输出
-    click.echo(f"[DEBUG] app.db_dir = {app.db_dir}")
-    click.echo(f"[DEBUG] self_username = {self_username}")
 
     # 添加 self_username 到 chat_ctx
     chat_ctx['self_username'] = self_username
@@ -368,11 +364,19 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
             color: rgba(0,0,0,0.6);
         }}
 
-        /* 自己消息的昵称+时间：右对齐 */
+        /* 自己消息的昵称+时间：右对齐 + 浅色文字 */
         .message.self .msg-meta {{
             justify-content: flex-end;
             padding-left: 0;
             padding-right: 12px;
+        }}
+
+        .message.self .sender-name {{
+            color: rgba(255,255,255,0.9);
+        }}
+
+        .message.self .msg-time {{
+            color: rgba(255,255,255,0.7);
         }}
 
         .bubble {{
