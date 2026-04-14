@@ -168,20 +168,37 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
                 original_path = _resolve_media_path(db_dir, content, base_type, create_time, ctx['username'])
                 if original_path:
                     media_type = 'image' if base_type == 3 else ('video' if base_type == 43 else 'file')
-                    if copy_media and media_dir and os.path.exists(original_path):
-                        # 复制媒体文件
-                        ext = Path(original_path).suffix
-                        safe_filename = f"{create_time}_{local_id}{ext}"
-                        copied_path = media_dir / safe_filename
-                        try:
-                            import shutil
-                            shutil.copy2(original_path, copied_path)
-                            media_path = f"media/{safe_filename}"
-                            media_copied = True
-                        except:
+                    
+                    if copy_media and media_dir:
+                        # 图片需要解码 .dat 文件
+                        if base_type == 3 and original_path.endswith('.dat'):
+                            from ..core.image_decode import decode_dat_file_fast
+                            ext = '.jpg'
+                            safe_filename = f"{create_time}_{local_id}{ext}"
+                            decoded_path = media_dir / safe_filename
+                            
+                            # 解码图片
+                            decoded = decode_dat_file_fast(original_path, str(decoded_path))
+                            if decoded:
+                                media_path = f"media/{safe_filename}"
+                                media_copied = True
+                            else:
+                                # 解码失败，保留原始路径
+                                media_path = original_path
+                        elif os.path.exists(original_path):
+                            # 视频/文件直接复制
+                            ext = Path(original_path).suffix
+                            safe_filename = f"{create_time}_{local_id}{ext}"
+                            copied_path = media_dir / safe_filename
+                            try:
+                                import shutil
+                                shutil.copy2(original_path, copied_path)
+                                media_path = f"media/{safe_filename}"
+                                media_copied = True
+                            except:
+                                media_path = original_path
+                        else:
                             media_path = original_path
-                    else:
-                        media_path = original_path
 
             messages.append({
                 'time': msg_time,
