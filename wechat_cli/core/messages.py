@@ -508,6 +508,7 @@ def _iter_table_contexts(ctx):
             'query': ctx['query'], 'username': ctx['username'], 'display_name': ctx['display_name'],
             'db_path': table['db_path'], 'table_name': table['table_name'],
             'is_group': ctx['is_group'],
+            'self_username': ctx.get('self_username', ''),  # 添加这个字段
         }
 
 
