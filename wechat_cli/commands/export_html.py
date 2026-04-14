@@ -48,16 +48,17 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
         click.echo(f"找不到聊天对象: {chat_name}", err=True)
         ctx.exit(1)
     
-    # 添加 self_username 到 chat_ctx
-    chat_ctx['self_username'] = self_username
-    if not chat_ctx['db_path']:
-        click.echo(f"找不到 {chat_ctx['display_name']} 的消息记录", err=True)
-        ctx.exit(1)
-
     names = get_contact_names(app.cache, app.decrypted_dir)
 
     # 获取账号自己的 username
     self_username = get_self_username(app.db_dir, app.cache, app.decrypted_dir)
+
+    # 添加 self_username 到 chat_ctx
+    chat_ctx['self_username'] = self_username
+    
+    if not chat_ctx['db_path']:
+        click.echo(f"找不到 {chat_ctx['display_name']} 的消息记录", err=True)
+        ctx.exit(1)
 
     # 直接使用已有的 collect_chat_history 函数
     lines, failures = collect_chat_history(
