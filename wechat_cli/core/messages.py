@@ -369,9 +369,6 @@ def _resolve_sender_label(real_sender_id, sender_from_content, is_group, chat_us
     # 获取自己的昵称
     self_display_name = display_name_fn(self_username, names) if self_username else '我'
     
-    # 调试输出（临时）
-    print(f"[DEBUG] sender_username={sender_username}, self_username={self_username}, self_display_name={self_display_name}, match={sender_username == self_username}")
-    
     if is_group:
         if sender_username and sender_username != chat_username:
             if sender_username == self_username:

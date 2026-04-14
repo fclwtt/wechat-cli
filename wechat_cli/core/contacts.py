@@ -197,5 +197,6 @@ def display_name_for_username(username, names, db_dir, cache, decrypted_dir):
     if not username:
         return ''
     if username == get_self_username(db_dir, cache, decrypted_dir):
-        return 'me'
+        # 返回自己的昵称，而不是 'me'
+        return names.get(username, username)
     return names.get(username, username)
