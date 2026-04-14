@@ -144,10 +144,27 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
             # 解压内容
             if wcdb_content:
                 try:
-                    from ..core.messages import _decompress_content
-                    content = _decompress_content(wcdb_content)
+                    # 微信 WCDB 压缩格式
+                    import zlib
+                    # 尝试标准 zlib
+                    content = zlib.decompress(wcdb_content, wbits=-15)
                 except:
-                    pass
+                    try:
+                        # 尝试去掉前 4 字节
+                        content = zlib.decompress(wcdb_content[4:], wbits=-15)
+                    except:
+                        pass
+            elif content and isinstance(content, bytes):
+                # message_content 本身也可能是压缩的
+                try:
+                    import zlib
+                    content = zlib.decompress(content, wbits=-15).decode('utf-8', errors='replace')
+                except:
+                    try:
+                        content = zlib.decompress(content[4:], wbits=-15).decode('utf-8', errors='replace')
+                    except:
+                        # 解压失败，保持原样
+                        pass
 
             # 解析消息
             base_type = local_type & 0xFFFFFFFF
