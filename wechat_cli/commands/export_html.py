@@ -467,6 +467,8 @@ def _find_video_by_time(video_dir, create_time, debug=False):
 
     if debug:
         print(f"      [DEBUG] _find_video_by_time: 找到 {len(video_files)} 个视频文件")
+        if video_files:
+            print(f"      [DEBUG] 视频文件: {[f.name for f in video_files[:5]]}")
 
     if not video_files:
         return None
@@ -474,6 +476,9 @@ def _find_video_by_time(video_dir, create_time, debug=False):
     # 找时间最近的文件
     dt = datetime.fromtimestamp(create_time)
     target_time = dt.timestamp()
+    
+    if debug:
+        print(f"      [DEBUG] 消息时间: {dt.strftime('%Y-%m-%d %H:%M:%S')} ({target_time})")
 
     best_file = None
     best_thumb = None
@@ -483,36 +488,37 @@ def _find_video_by_time(video_dir, create_time, debug=False):
         try:
             file_mtime = f.stat().st_mtime
             diff = abs(file_mtime - target_time)
+            if debug:
+                print(f"      [DEBUG] {f.name}: mtime={datetime.fromtimestamp(file_mtime).strftime('%H:%M:%S')}, diff={diff:.0f}s")
             if diff < best_diff:
                 best_diff = diff
                 best_file = f
                 # 查找对应的缩略图
                 thumb_name = f.stem + "_thumb.jpg"
                 thumb_path = video_dir / thumb_name
-                if thumb_path.exists():
-                    best_thumb = thumb_path
-        except:
-            pass
+                best_thumb = thumb_path if thumb_path.exists() else None
+        except Exception as e:
+            if debug:
+                print(f"      [DEBUG] {f.name}: error={e}")
 
-    # 如果时间差在 60 秒内，返回该文件
-    if best_file and best_diff < 60:
-        result = {
-            'video': str(best_file),
-            'thumb': str(best_thumb) if best_thumb else None
-        }
-        if debug:
-            print(f"      [DEBUG] 找到视频: {best_file.name}, 缩略图: {best_thumb.name if best_thumb else '无'}")
-        return result
+    if debug:
+        print(f"      [DEBUG] best_file={best_file.name if best_file else None}, best_diff={best_diff:.0f}s")
 
-    # 否则返回第一个文件
-    if len(video_files) == 1:
-        thumb_name = video_files[0].stem + "_thumb.jpg"
-        thumb_path = video_dir / thumb_name
-        result = {
-            'video': str(video_files[0]),
-            'thumb': str(thumb_path) if thumb_path.exists() else None
-        }
-        return result
+    # 放宽匹配条件：
+    # 1. 时间差 < 60s：精确匹配
+    # 2. 时间差 < 300s（5分钟）：模糊匹配
+    # 3. 视频文件 <= 5个：返回时间最接近的
+    if best_file:
+        if best_diff < 60:
+            result = {'video': str(best_file), 'thumb': str(best_thumb) if best_thumb else None}
+            if debug:
+                print(f"      [DEBUG] 精确匹配 (<60s): {best_file.name}")
+            return result
+        elif best_diff < 300 or len(video_files) <= 5:
+            result = {'video': str(best_file), 'thumb': str(best_thumb) if best_thumb else None}
+            if debug:
+                print(f"      [DEBUG] 模糊匹配 (diff={best_diff:.0f}s, files={len(video_files)}): {best_file.name}")
+            return result
 
     return None
 
