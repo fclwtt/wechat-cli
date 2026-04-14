@@ -19,7 +19,8 @@ from ..core.messages import resolve_chat_context
 @click.option("--max-chats", default=100, help="每个账号最多导出多少个聊天")
 @click.option("--start-time", default=None, help="开始时间 (YYYY-MM-DD)")
 @click.option("--end-time", default=None, help="结束时间 (YYYY-MM-DD)")
-def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, end_time):
+@click.option("--debug", is_flag=True, help="显示详细调试信息")
+def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, end_time, debug):
     """导出所有账号的聊天记录为 HTML 页面
 
     \b
@@ -28,11 +29,32 @@ def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, e
       wechat-cli export-all-accounts --output ~/backup   # 导出到指定目录
       wechat-cli export-all-accounts --copy-media        # 同时复制媒体文件
       wechat-cli export-all-accounts --start-time 2026-04-12 --end-time 2026-04-12  # 每日导出
+      wechat-cli export-all-accounts --debug             # 显示调试信息
     """
+    # 调试输出函数
+    def debug_log(msg):
+        if debug:
+            click.echo(f"[DEBUG] {msg}")
+    
+    debug_log(f"ACCOUNTS_DIR = {ACCOUNTS_DIR}")
+    debug_log(f"ACCOUNTS_INDEX_FILE = {ACCOUNTS_INDEX_FILE}")
+    debug_log(f"accounts index exists = {os.path.exists(ACCOUNTS_INDEX_FILE)}")
+    
     # 获取所有账号
     accounts = list_accounts()
+    debug_log(f"Found accounts: {accounts}")
+    
     if not accounts:
         click.echo("错误: 未找到任何账号,请先运行 wechat-cli init --all", err=True)
+        click.echo("")
+        click.echo("调试信息:")
+        click.echo(f"  账号目录: {ACCOUNTS_DIR}")
+        click.echo(f"  目录存在: {os.path.exists(ACCOUNTS_DIR)}")
+        if os.path.exists(ACCOUNTS_DIR):
+            subdirs = [d for d in os.listdir(ACCOUNTS_DIR) if os.path.isdir(os.path.join(ACCOUNTS_DIR, d))]
+            click.echo(f"  子目录: {subdirs}")
+        click.echo(f"  索引文件: {ACCOUNTS_INDEX_FILE}")
+        click.echo(f"  索引存在: {os.path.exists(ACCOUNTS_INDEX_FILE)}")
         exit(1)
 
     # 解析时间范围
