@@ -90,7 +90,7 @@ def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, e
         click.echo("-" * 40)
 
         try:
-            _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts, end_ts)
+            _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts, end_ts, debug)
         except Exception as e:
             click.echo(f"  导出失败: {e}", err=True)
 
@@ -105,10 +105,15 @@ def export_all_accounts(output_path, limit, copy_media, max_chats, start_time, e
     click.echo("  2. 进入账号目录 → 聊天目录 → 双击 index.html")
 
 
-def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=None, end_ts=None):
+def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=None, end_ts=None, debug=False):
     """导出单个账号的所有聊天"""
     import json
     from .export_html import _collect_message_details, _generate_html, _generate_markdown
+
+    # 调试输出函数
+    def debug_log(msg):
+        if debug:
+            click.echo(f"    [DEBUG] {msg}")
 
     # 加载配置
     cfg = load_account_config(wxid)
@@ -116,16 +121,24 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=Non
     keys_file = cfg["keys_file"]
     decrypted_dir = cfg.get("decrypted_dir", os.path.join(ACCOUNTS_DIR, wxid, "decrypted"))
 
+    debug_log(f"db_dir = {db_dir}")
+    debug_log(f"keys_file = {keys_file}")
+    debug_log(f"keys_file exists = {os.path.exists(keys_file)}")
+
     # 加载密钥
     keys_json = json.load(open(keys_file))
     from ..core.key_utils import strip_key_metadata
     all_keys = strip_key_metadata(keys_json)
 
+    debug_log(f"all_keys count = {len(all_keys)}")
+
     # 初始化 cache
     cache = DBCache(all_keys, db_dir)
+    debug_log(f"cache initialized")
 
     # 获取 msg_db_keys
-    msg_db_keys = [k for k in keys_json.keys() if k.startswith("message/")]
+    msg_db_keys = [k for k in keys_json.keys() if k.startswith("message/")]    debug_log(f"msg_db_keys count = {len(msg_db_keys)}")    if msg_db_keys:
+        debug_log(f"msg_db_keys sample: {msg_db_keys[:3]}...")
 
     # 获取联系人
     names = get_contact_names(cache, decrypted_dir)
@@ -177,8 +190,13 @@ def _export_account(wxid, output_dir, limit, copy_media, max_chats, start_ts=Non
         try:
             # 解析聊天上下文
             chat_ctx = resolve_chat_context(username, msg_db_keys, cache, decrypted_dir)
-            if not chat_ctx or not chat_ctx.get('db_path'):
-                click.echo(f"      跳过: 找不到聊天记录")
+            debug_log(f"resolve_chat_context({username}) = {chat_ctx}")
+            if not chat_ctx:
+                click.echo(f"      跳过: resolve_chat_context 返回 None")
+                continue
+            if not chat_ctx.get('db_path'):
+                debug_log(f"chat_ctx keys: {list(chat_ctx.keys())}")
+                click.echo(f"      跳过: db_path 为 None, message_tables={len(chat_ctx.get('message_tables', []))}")
                 continue
 
             # 创建聊天目录
