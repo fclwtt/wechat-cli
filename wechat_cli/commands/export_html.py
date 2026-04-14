@@ -514,20 +514,27 @@ def _find_video_by_time(video_dir, create_time, debug=False):
     if debug:
         print(f"      [DEBUG] best_file={best_file.name if best_file else None}, best_diff={best_diff:.0f}s")
 
-    # 放宽匹配条件：
+    # 放宽匹配条件（视频文件可能很多，无法精确匹配）：
     # 1. 时间差 < 60s：精确匹配
-    # 2. 时间差 < 300s（5分钟）：模糊匹配
-    # 3. 视频文件 <= 5个：返回时间最接近的
+    # 2. 时间差 < 600s（10分钟）：模糊匹配
+    # 3. 视频文件 <= 10个：返回时间最接近的
+    # 4. 文件 > 10个：只要找到最近的就返回（标注为不确定匹配）
     if best_file:
         if best_diff < 60:
             result = {'video': str(best_file), 'thumb': str(best_thumb) if best_thumb else None}
             if debug:
                 print(f"      [DEBUG] 精确匹配 (<60s): {best_file.name}")
             return result
-        elif best_diff < 300 or len(video_files) <= 5:
+        elif best_diff < 600 or len(video_files) <= 10:
             result = {'video': str(best_file), 'thumb': str(best_thumb) if best_thumb else None}
             if debug:
                 print(f"      [DEBUG] 模糊匹配 (diff={best_diff:.0f}s, files={len(video_files)}): {best_file.name}")
+            return result
+        else:
+            # 即使时间差很大，也返回最近的文件（但标注为不确定）
+            result = {'video': str(best_file), 'thumb': str(best_thumb) if best_thumb else None}
+            if debug:
+                print(f"      [DEBUG] 不确定匹配 (diff={best_diff:.0f}s, files={len(video_files)}): {best_file.name}")
             return result
 
     return None
