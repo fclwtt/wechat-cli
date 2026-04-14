@@ -87,7 +87,7 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
         click.echo("-" * 40)
 
         try:
-            _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, debug)
+            _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active, debug)
         except Exception as e:
             click.echo(f"  导出失败: {e}", err=True)
             if debug:
@@ -105,7 +105,7 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
     click.echo("  2. 进入账号目录 → 聊天目录 → 双击 index.html")
 
 
-def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, debug=False):
+def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active=False, debug=False):
     """导出单个账号的所有聊天"""
     from .export_html import _generate_html, _generate_markdown
 
