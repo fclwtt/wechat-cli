@@ -28,7 +28,7 @@ class MBI(ctypes.Structure):
 
 
 def _get_all_db_dirs():
-    """返回所有微信账号的 db_dir 列表"""
+    """返回所有微信账号的 db_dir 列表（去重）"""
     appdata = os.environ.get("APPDATA", "")
     config_dir = os.path.join(appdata, "Tencent", "xwechat", "config")
     if not os.path.isdir(config_dir):
@@ -56,6 +56,8 @@ def _get_all_db_dirs():
         except OSError:
             continue
     
+    # 去重
+    db_dirs = list(set(db_dirs))
     return db_dirs
 
 

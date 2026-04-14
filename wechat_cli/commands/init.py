@@ -54,8 +54,8 @@ def _init_all_accounts(force):
         click.echo("\n[!] 未找到任何微信账号", err=True)
         sys.exit(1)
     
-    # 更新账号索引
-    account_ids = [a["wxid"] for a in accounts]
+    # 更新账号索引（去重）
+    account_ids = list(set([a["wxid"] for a in accounts]))
     with open(ACCOUNTS_INDEX_FILE, "w", encoding="utf-8") as f:
         json.dump(account_ids, f, indent=2)
     

@@ -39,8 +39,8 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, deb
     debug_log(f"ACCOUNTS_INDEX_FILE = {ACCOUNTS_INDEX_FILE}")
     debug_log(f"accounts index exists = {os.path.exists(ACCOUNTS_INDEX_FILE)}")
 
-    # 获取所有账号
-    accounts = list_accounts()
+    # 获取所有账号（去重，防止 accounts.json 有重复）
+    accounts = list(set(list_accounts()))
     debug_log(f"Found accounts: {accounts}")
 
     if not accounts:
