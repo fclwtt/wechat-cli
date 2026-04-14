@@ -52,6 +52,10 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
 
     # 获取账号自己的 username
     self_username = get_self_username(app.db_dir, app.cache, app.decrypted_dir)
+    
+    # 调试输出
+    click.echo(f"[DEBUG] app.db_dir = {app.db_dir}")
+    click.echo(f"[DEBUG] self_username = {self_username}")
 
     # 添加 self_username 到 chat_ctx
     chat_ctx['self_username'] = self_username
