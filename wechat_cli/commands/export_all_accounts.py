@@ -225,17 +225,16 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
         click.echo(f"    [{i}/{len(chats)}] {chat_name}")
 
         try:
-            # 解析聊天上下文
-            chat_ctx = resolve_chat_context(
-                chat_info['username'],
-                msg_db_keys,
-                cache,
-                decrypted_dir
-            )
-
-            if not chat_ctx or not chat_ctx.get('db_path'):
-                click.echo(f"      跳过: resolve_chat_context 返回 None")
-                continue
+            # 直接构建聊天上下文（已有 db_path 和 table_name）
+            chat_ctx = {
+                'query': chat_info['username'],
+                'username': chat_info['username'],
+                'display_name': chat_info['display_name'],
+                'db_path': chat_info['db_path'],
+                'table_name': chat_info['table_name'],
+                'message_tables': [{'db_path': chat_info['db_path'], 'table_name': chat_info['table_name']}],
+                'is_group': '@chatroom' in chat_info['username'],
+            }
 
             # 创建聊天目录
             safe_name = chat_name.replace('/', '_').replace('\\', '_').replace(':', '_')
