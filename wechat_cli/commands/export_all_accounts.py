@@ -159,7 +159,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
 
     chats = []
     for db_key in msg_db_keys:
-        db_path = cache.get_db_path(db_key)
+        db_path = cache.get(db_key)
         if not db_path or not os.path.exists(db_path):
             continue
 
