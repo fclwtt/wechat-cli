@@ -21,11 +21,11 @@ set OUTPUT_DIR=%USERPROFILE%\wechat-chats-backup
 echo Tool: %CLI_PATH%
 echo Output: %OUTPUT_DIR%
 echo.
-echo Exporting all chat records from all accounts...
+echo Exporting all chat records from all accounts (full history)...
 echo.
 
-REM Run export command (multi-account, text-only, new HTML style)
-"%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%" --limit 2000 --max-chats 100
+REM Run export command (multi-account, text-only, new HTML style, no limits)
+"%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%"
 
 echo.
 echo Export Complete!

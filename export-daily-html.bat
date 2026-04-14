@@ -29,11 +29,11 @@ echo Output: %OUTPUT_DIR%
 echo.
 
 echo Updating chat records...
-echo Note: Only chats with new messages yesterday will be updated
+echo Note: Only chats with new messages yesterday will be updated (full history)
 echo.
 
-REM Run daily update (only chats with messages yesterday, overwrite existing)
-"%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%" --limit 2000 --max-chats 100 --start-time "%YESTERDAY%" --end-time "%YESTERDAY%" --only-active
+REM Run daily update (only chats with messages yesterday, overwrite existing, no limits)
+"%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%" --start-time "%YESTERDAY%" --end-time "%YESTERDAY%" --only-active
 
 echo.
 echo ============================================================
@@ -44,6 +44,7 @@ echo Output: %OUTPUT_DIR%
 echo.
 echo Note:
 echo   - Only chats with new messages yesterday were updated
+echo   - Full history exported (no message limit)
 echo   - HTML files were overwritten with latest content
 echo   - Chats without new messages were skipped
 echo.

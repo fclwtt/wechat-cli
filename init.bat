@@ -33,7 +33,7 @@ echo   Initialization Complete!
 echo ============================================
 echo.
 echo Next steps:
-echo   1. Double-click export-all-html.bat to export all chats
+echo   1. Double-click export-all-accounts.bat to export all chats
 echo   2. Double-click export-daily-html.bat for daily updates
 echo.
 
