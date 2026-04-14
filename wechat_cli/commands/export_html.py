@@ -181,6 +181,10 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
                 if original_path:
                     media_type = 'image' if base_type == 3 else ('video' if base_type == 43 else 'file')
                     
+                    if debug and base_type == 3:
+                        print(f"    [DEBUG] media_type={media_type}, copy_media={copy_media}, media_dir={media_dir}")
+                        print(f"    [DEBUG] original_path.endswith('.dat')={original_path.endswith('.dat')}")
+                    
                     if copy_media and media_dir:
                         # 图片需要解码 .dat 文件
                         if base_type == 3 and original_path.endswith('.dat'):
@@ -189,13 +193,22 @@ def _collect_message_details(chat_ctx, names, display_name_fn, start_ts, end_ts,
                             safe_filename = f"{create_time}_{local_id}{ext}"
                             decoded_path = media_dir / safe_filename
                             
+                            if debug:
+                                print(f"    [DEBUG] 解码: {original_path} -> {decoded_path}")
+                            
                             # 解码图片
                             decoded = decode_dat_file_fast(original_path, str(decoded_path))
+                            
+                            if debug:
+                                print(f"    [DEBUG] 解码结果: {decoded}")
+                            
                             if decoded:
                                 media_path = f"media/{safe_filename}"
                                 media_copied = True
                             else:
                                 # 解码失败，保留原始路径
+                                if debug:
+                                    print(f"    [DEBUG] 解码失败！")
                                 media_path = original_path
                         elif os.path.exists(original_path):
                             # 视频/文件直接复制
