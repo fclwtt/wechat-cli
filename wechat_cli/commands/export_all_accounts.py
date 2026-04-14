@@ -293,20 +293,13 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                 # 判断发送者和是否是自己
                 if ': ' in line_content:
                     sender_part, content = line_content.split(': ', 1)
-                    # 群聊：发送者 == self_username 或 '我' = 自己
-                    # 私聊：发送者 == self_username 或 '我' 或 '' = 自己
-                    if is_group_chat:
-                        is_self = sender_part == self_username or sender_part == '我'
-                    else:
-                        # 私聊：发送者 != 聊天对象名 = 自己
-                        # 或者发送者 == self_username 或 '我' 或 ''
-                        is_self = sender_part == self_username or sender_part == '我' or sender_part == ''
+                    # 自己的消息：发送者是 self_username 或 '我'
+                    is_self = sender_part == self_username or sender_part == '我'
                 else:
-                    # 没有发送者前缀
+                    # 没有发送者前缀（理论上不会再出现）
                     sender_part = ''
                     content = line_content
-                    # 私聊中无发送者 = 自己发的消息
-                    is_self = not is_group_chat
+                    is_self = False
                 
                 messages.append({
                     'time': time_str,

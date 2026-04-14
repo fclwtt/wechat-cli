@@ -373,11 +373,13 @@ def _resolve_sender_label(real_sender_id, sender_from_content, is_group, chat_us
         if sender_from_content:
             return display_name_fn(sender_from_content, names)
         return ''
+    # 私聊
     if sender_username == chat_username:
-        return chat_display_name
+        return chat_display_name  # 对方发的消息
     if sender_username:
-        return display_name_fn(sender_username, names)
-    return ''
+        return display_name_fn(sender_username, names)  # 其他人（不太可能）
+    # 私聊中发送者为空 = 自己发的消息
+    return '我'
 
 
 # ---- SQL 查询 ----

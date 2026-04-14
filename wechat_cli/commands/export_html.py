@@ -97,18 +97,13 @@ def export_html(ctx, chat_name, output_path, start_time, end_time, limit):
         # 判断发送者和是否是自己
         if ': ' in line_content:
             sender_part, content = line_content.split(': ', 1)
-            # 群聊：发送者 == self_username 或 '我' = 自己
-            # 私聊：发送者 == self_username 或 '我' 或 '' = 自己
-            if is_group_chat:
-                is_self = sender_part == self_username or sender_part == '我'
-            else:
-                is_self = sender_part == self_username or sender_part == '我' or sender_part == ''
+            # 自己的消息：发送者是 self_username 或 '我'
+            is_self = sender_part == self_username or sender_part == '我'
         else:
-            # 没有发送者前缀
+            # 没有发送者前缀（理论上不会再出现，因为 _resolve_sender_label 已修复）
             sender_part = ''
             content = line_content
-            # 私聊中无发送者 = 自己发的消息
-            is_self = not is_group_chat
+            is_self = False
         
         
         messages.append({
@@ -344,16 +339,32 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
 
         .sender-name {{
             font-size: 12px;
-            color: rgba(255,255,255,0.7);
+            color: rgba(255,255,255,0.9);
         }}
 
         .msg-time {{
             font-size: 11px;
-            color: rgba(255,255,255,0.5);
+            color: rgba(255,255,255,0.6);
         }}
 
+        /* 对方消息的昵称+时间：深色文字 */
+        .message.other .msg-meta {{
+            color: rgba(0,0,0,0.8);
+        }}
+
+        .message.other .sender-name {{
+            color: rgba(0,0,0,0.9);
+        }}
+
+        .message.other .msg-time {{
+            color: rgba(0,0,0,0.6);
+        }}
+
+        /* 自己消息的昵称+时间：右对齐 */
         .message.self .msg-meta {{
-            display: none;
+            justify-content: flex-end;
+            padding-left: 0;
+            padding-right: 12px;
         }}
 
         .bubble {{
