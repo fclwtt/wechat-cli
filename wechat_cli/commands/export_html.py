@@ -381,11 +381,11 @@ def _generate_html(display_name, is_group, start_time, end_time, messages):
         }}
 
         .message.self .sender-name {{
-            color: #a0d8ff;  /* 浅蓝色，更明显 */
+            color: rgba(0,0,0,0.9);  /* 黑色，跟对方一样 */
         }}
 
         .message.self .msg-time {{
-            color: #7ab8ff;  /* 浅蓝色，稍淡 */
+            color: rgba(0,0,0,0.7);  /* 黑色，稍淡 */
         }}
 
         .bubble {{
