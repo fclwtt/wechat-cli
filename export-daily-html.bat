@@ -24,7 +24,7 @@ echo Export Date: %YESTERDAY% (yesterday)
 echo.
 
 REM Set output directory (same as full export)
-set OUTPUT_DIR=%USERPROFILE%\wechat-chats-backup
+set OUTPUT_DIR=E:\wechat-chats-backup
 echo Output: %OUTPUT_DIR%
 echo.
 

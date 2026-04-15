@@ -16,7 +16,7 @@ if not exist "%~dp0wechat-cli.exe" (
 )
 
 set CLI_PATH=%~dp0wechat-cli.exe
-set OUTPUT_DIR=%USERPROFILE%\wechat-chats-backup
+set OUTPUT_DIR=E:\wechat-chats-backup
 
 echo Tool: %CLI_PATH%
 echo Output: %OUTPUT_DIR%
