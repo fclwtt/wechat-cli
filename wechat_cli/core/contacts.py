@@ -1,16 +1,15 @@
-"""联系人管理 — 加载、缓存、模糊匹配"""
+"""联系人管理 — 加载、缓存、模糊匹配
+
+注意：移除全局变量，避免多账号时数据串用
+"""
 
 import os
 import re
 import sqlite3
 
 
-_contact_names = None  # {username: display_name}
-_contact_full = None   # [{username, nick_name, remark}]
-_self_username = None
-
-
 def _load_contacts_from(db_path):
+    """从 contact.db 加载联系人"""
     names = {}
     full = []
     conn = sqlite3.connect(db_path)
@@ -26,23 +25,33 @@ def _load_contacts_from(db_path):
 
 
 def get_contact_names(cache, decrypted_dir):
-    global _contact_names, _contact_full
-    if _contact_names is not None:
-        return _contact_names
-
+    """获取联系人名称字典
+    
+    Args:
+        cache: DBCache 对象，用于解密数据库
+        decrypted_dir: 预解密目录
+        
+    Returns:
+        dict: {username: display_name}
+        
+    注意：不再使用全局缓存，每次调用都重新加载
+    （避免多账号时数据串用）
+    """
+    # 优先使用预解密文件
     pre_decrypted = os.path.join(decrypted_dir, "contact", "contact.db")
     if os.path.exists(pre_decrypted):
         try:
-            _contact_names, _contact_full = _load_contacts_from(pre_decrypted)
-            return _contact_names
+            names, _ = _load_contacts_from(pre_decrypted)
+            return names
         except Exception:
             pass
 
+    # 使用 cache 解密
     path = cache.get(os.path.join("contact", "contact.db"))
     if path:
         try:
-            _contact_names, _contact_full = _load_contacts_from(path)
-            return _contact_names
+            names, _ = _load_contacts_from(path)
+            return names
         except Exception:
             pass
 
@@ -50,13 +59,28 @@ def get_contact_names(cache, decrypted_dir):
 
 
 def get_contact_full(cache, decrypted_dir):
-    global _contact_full
-    if _contact_full is None:
-        get_contact_names(cache, decrypted_dir)
-    return _contact_full or []
+    """获取联系人完整信息列表"""
+    pre_decrypted = os.path.join(decrypted_dir, "contact", "contact.db")
+    if os.path.exists(pre_decrypted):
+        try:
+            _, full = _load_contacts_from(pre_decrypted)
+            return full
+        except Exception:
+            pass
+
+    path = cache.get(os.path.join("contact", "contact.db"))
+    if path:
+        try:
+            _, full = _load_contacts_from(path)
+            return full
+        except Exception:
+            pass
+
+    return []
 
 
 def resolve_username(chat_name, cache, decrypted_dir):
+    """根据显示名反查 username"""
     names = get_contact_names(cache, decrypted_dir)
     if chat_name in names or chat_name.startswith('wxid_') or '@chatroom' in chat_name:
         return chat_name
@@ -71,9 +95,7 @@ def resolve_username(chat_name, cache, decrypted_dir):
 
 
 def get_self_username(db_dir, cache, decrypted_dir):
-    global _self_username
-    if _self_username:
-        return _self_username
+    """获取账号自己的 username"""
     if not db_dir:
         return ''
     names = get_contact_names(cache, decrypted_dir)
@@ -84,8 +106,7 @@ def get_self_username(db_dir, cache, decrypted_dir):
         candidates.insert(0, m.group(1))
     for candidate in candidates:
         if candidate and candidate in names:
-            _self_username = candidate
-            return _self_username
+            return candidate
     return ''
 
 
@@ -194,6 +215,7 @@ def get_contact_detail(username, cache, decrypted_dir):
 
 
 def display_name_for_username(username, names, db_dir, cache, decrypted_dir):
+    """获取 username 的显示名"""
     if not username:
         return ''
     if username == get_self_username(db_dir, cache, decrypted_dir):
