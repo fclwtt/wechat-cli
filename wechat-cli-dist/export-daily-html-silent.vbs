@@ -1,11 +1,11 @@
-' 微信聊天每日导出 - 隙执行（无窗口）
-' 双击此文件即可后台运行
+' WeChat Daily Export - Silent Execution
+' Double-click to run without visible window
 
 Set WshShell = CreateObject("WScript.Shell")
 batPath = CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript.ScriptFullName) & "\export-daily-html-hidden.bat"
 
-' 隐藏窗口执行
+' Run hidden
 WshShell.Run "cmd /c """"" & batPath & """""", 0, True
 
-' 执行完成，弹窗提示
-MsgBox "微信聊天每日导出完成！" & vbCrLf & vbCrLf & "输出目录: E:\wechat-chats-backup", vbInformation, "导出完成"
+' Show completion message
+MsgBox "WeChat Daily Export Complete!" & vbCrLf & vbCrLf & "Output: E:\wechat-chats-backup", vbInformation, "Export Complete"
