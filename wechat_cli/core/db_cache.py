@@ -4,18 +4,36 @@ import hashlib
 import json
 import os
 import tempfile
+import time
 
 from .crypto import full_decrypt, decrypt_wal
 from .key_utils import get_key_info
 
 
 class DBCache:
-    CACHE_DIR = os.path.join(tempfile.gettempdir(), "wechat_cli_cache")
-    MTIME_FILE = os.path.join(tempfile.gettempdir(), "wechat_cli_cache", "_mtimes.json")
-
-    def __init__(self, all_keys, db_dir):
+    """解密数据库缓存
+    
+    缓存目录选择:
+    1. 如果 decrypted_dir 已设置，存到固定目录（accounts/{wxid}/decrypted/）
+    2. 否则存到临时目录（可能被系统清理）
+    
+    性能优化:
+    - 首次解密时打印耗时
+    - 复用缓存时快速返回
+    """
+    
+    def __init__(self, all_keys, db_dir, decrypted_dir=None):
         self._all_keys = all_keys
         self._db_dir = db_dir
+        self._decrypted_dir = decrypted_dir
+        
+        # 缓存目录：优先固定目录，其次临时目录
+        if decrypted_dir:
+            self.CACHE_DIR = decrypted_dir
+        else:
+            self.CACHE_DIR = os.path.join(tempfile.gettempdir(), "wechat_cli_cache")
+        
+        self.MTIME_FILE = os.path.join(self.CACHE_DIR, "_mtimes.json")
         self._cache = {}  # rel_key -> (db_mtime, wal_mtime, tmp_path)
         os.makedirs(self.CACHE_DIR, exist_ok=True)
         self._load_persistent_cache()
@@ -58,6 +76,8 @@ class DBCache:
             pass
 
     def get(self, rel_key):
+        get_start = time.time()
+        
         key_info = get_key_info(self._all_keys, rel_key)
         if not key_info:
             return None
@@ -73,16 +93,27 @@ class DBCache:
         except OSError:
             return None
 
+        # 检查缓存
         if rel_key in self._cache:
             c_db_mt, c_wal_mt, c_path = self._cache[rel_key]
             if c_db_mt == db_mtime and c_wal_mt == wal_mtime and os.path.exists(c_path):
+                # 缓存有效，直接返回
+                get_time = time.time() - get_start
+                if get_time > 0.3:
+                    print(f"[缓存] {rel_key}: 复用 ({get_time:.2f}s)")
                 return c_path
 
+        # 需要解密
+        decrypt_start = time.time()
         tmp_path = self._cache_path(rel_key)
         enc_key = bytes.fromhex(key_info["enc_key"])
         full_decrypt(db_path, tmp_path, enc_key)
         if os.path.exists(wal_path):
             decrypt_wal(wal_path, tmp_path, enc_key)
+        decrypt_time = time.time() - decrypt_start
+        
+        print(f"[解密] {rel_key}: {decrypt_time:.2f}s")
+        
         self._cache[rel_key] = (db_mtime, wal_mtime, tmp_path)
         self._save_persistent_cache()
         return tmp_path

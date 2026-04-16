@@ -28,7 +28,7 @@ class AppContext:
         with open(self.keys_file, encoding="utf-8") as f:
             self.all_keys = strip_key_metadata(json.load(f))
 
-        self.cache = DBCache(self.all_keys, self.db_dir)
+        self.cache = DBCache(self.all_keys, self.db_dir, self.decrypted_dir)
         atexit.register(self.cache.cleanup)
 
         self.msg_db_keys = find_msg_db_keys(self.all_keys)

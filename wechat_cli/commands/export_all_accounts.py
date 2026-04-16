@@ -152,8 +152,9 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
 
     debug_log(f"all_keys count = {len(all_keys)}")
 
-    # 初始化 cache
-    cache = DBCache(all_keys, db_dir)
+    # 初始化 cache（使用固定解密目录）
+    cache = DBCache(all_keys, db_dir, decrypted_dir)
+    debug_log(f"缓存目录: {cache.CACHE_DIR}")
 
     debug_log(f"cache initialized")
 
