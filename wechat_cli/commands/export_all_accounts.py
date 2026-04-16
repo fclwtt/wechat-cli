@@ -163,7 +163,12 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
     debug_log(f"msg_db_keys sample: {msg_db_keys[:3]}...")
 
     # 获取联系人名称
+    import time
+    names_start = time.time()
     names = get_contact_names(cache, decrypted_dir)
+    names_time = time.time() - names_start
+    if names_time > 0.5:
+        debug_log(f"[慢] 加载联系人耗时: {names_time:.2f}s ({len(names)} 个)")
 
     # 获取账号自己的 username
     self_username = get_self_username(db_dir, cache, decrypted_dir)
@@ -198,10 +203,15 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
     debug_log(f"联系人数量: {len(names)}")
 
     # 尝试从 session.db 获取会话列表（补充 hash_to_username 和昵称）
+    session_start = time.time()
     session_db_key = os.path.join("session", "session.db")
     session_db_path = cache.get(session_db_key)
     if session_db_path:
         try:
+            session_open_time = time.time() - session_start
+            if session_open_time > 0.5:
+                debug_log(f"[慢] 解密 session.db 耗时: {session_open_time:.2f}s")
+            
             with closing(sqlite3.connect(session_db_path)) as conn:
                 # 先探测 SessionTable 的实际列名
                 columns = [col[1] for col in conn.execute("PRAGMA table_info(SessionTable)").fetchall()]
@@ -258,10 +268,16 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
     debug_log(f"hash_to_username 总数: {len(hash_to_username)}")
 
     chats = []
+    msg_scan_start = time.time()
     for db_key in msg_db_keys:
         db_path = cache.get(db_key)
         if not db_path or not os.path.exists(db_path):
             continue
+        
+        db_open_time = time.time() - msg_scan_start
+        if db_open_time > 1.0:
+            debug_log(f"[慢] 解密 {db_key} 耗时: {db_open_time:.2f}s")
+        msg_scan_start = time.time()  # 重置计时
 
         try:
             with closing(sqlite3.connect(db_path)) as conn:
@@ -367,8 +383,14 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
     exported = 0
     failed = 0
     exported_chats = []  # 记录导出的聊天文件夹名
+    
+    # 性能分析
+    import time
+    export_times = []
 
     for i, chat_info in enumerate(chats, 1):
+        chat_start = time.time()
+        
         chat_name = chat_info['display_name'] or chat_info['username']
         # 如果 display_name 是表名(Msg_xxx)，显示 username
         if chat_name.startswith('Msg_'):
@@ -376,6 +398,8 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
         click.echo(f"    [{i}/{len(chats)}] {chat_name}")
 
         try:
+            step_start = time.time()
+            
             # 直接构建聊天上下文（已有 db_path 和 table_name）
             chat_ctx = {
                 'query': chat_info['username'],
@@ -402,16 +426,21 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             export_start_ts = None if active_since_ts else start_ts
             export_end_ts = None if active_since_ts else end_ts
             
+            collect_start = time.time()
             lines, failures = collect_chat_history(
                 chat_ctx, names, display_name_fn,
                 start_ts=export_start_ts, end_ts=export_end_ts, limit=limit, offset=0,
             )
+            collect_time = time.time() - collect_start
+            if collect_time > 0.5:
+                click.echo(f"      [慢] 收集消息耗时: {collect_time:.2f}s ({len(lines)} 条)")
 
             if not lines:
                 click.echo(f"      跳过: 无消息")
                 continue
 
             # 转换为 messages 格式
+            convert_start = time.time()
             messages = []
             is_group_chat = chat_ctx.get('is_group', False)
             for line in lines:
@@ -442,12 +471,16 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                     'content': content,
                     'is_self': is_self,
                 })
+            convert_time = time.time() - convert_start
+            if convert_time > 0.5:
+                click.echo(f"      [慢] 转换消息耗时: {convert_time:.2f}s")
 
             # 生成 HTML
             # 如果用了 --active-since，时间显示为 "最早" 到 "最新"
             html_start_time = "最早" if active_since_ts else (start_time or "最早")
             html_end_time = "最新" if active_since_ts else (end_time or "最新")
             
+            html_start = time.time()
             html_content = _generate_html(
                 chat_name,
                 chat_ctx.get('is_group', False),
@@ -455,11 +488,15 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                 html_end_time,
                 messages,
             )
+            html_time = time.time() - html_start
+            if html_time > 0.5:
+                click.echo(f"      [慢] 生成HTML耗时: {html_time:.2f}s")
 
             html_path = chat_dir / "index.html"
             html_path.write_text(html_content, encoding="utf-8")
 
             # 生成 Markdown
+            md_start = time.time()
             md_content = _generate_markdown(
                 chat_name,
                 chat_ctx.get('is_group', False),
@@ -467,6 +504,9 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                 html_end_time,
                 messages,
             )
+            md_time = time.time() - md_start
+            if md_time > 0.5:
+                click.echo(f"      [慢] 生成MD耗时: {md_time:.2f}s")
 
             md_path = chat_dir / "index.md"
             md_path.write_text(md_content, encoding="utf-8")
@@ -476,6 +516,11 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             # 记录导出的聊天文件夹名（用于索引）
             # 格式: 账号名/文件夹名
             exported_chats.append(f"{wxid}/{safe_name}")
+            
+            chat_total = time.time() - chat_start
+            if chat_total > 1.0:
+                click.echo(f"      [慢] 总耗时: {chat_total:.2f}s")
+            export_times.append(chat_total)
 
         except Exception as e:
             click.echo(f"      失败: {e}")
