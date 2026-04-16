@@ -21,8 +21,9 @@ from ..core.messages import resolve_chat_context, collect_chat_history, parse_ti
 @click.option("--end-time", default=None, help="结束时间 (YYYY-MM-DD)")
 @click.option("--only-active", is_flag=True, help="只导出指定时间范围内有消息的聊天")
 @click.option("--active-since", default=None, help="筛选指定日期有消息的聊天，但导出全部历史 (YYYY-MM-DD)，如 --active-since 2026-04-15")
+@click.option("--index-file", default=None, help="索引文件路径，记录导出的聊天列表")
 @click.option("--debug", is_flag=True, help="显示详细调试信息")
-def export_all_accounts(output_path, limit, max_chats, start_time, end_time, only_active, active_since, debug):
+def export_all_accounts(output_path, limit, max_chats, start_time, end_time, only_active, active_since, index_file, debug):
     """导出所有账号的聊天记录为 HTML 页面（纯文字版）
 
     \b
@@ -92,7 +93,7 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
         click.echo("-" * 40)
 
         try:
-            _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active, active_since, active_since_ts, debug)
+            _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active, active_since, active_since_ts, index_file, debug)
         except Exception as e:
             click.echo(f"  导出失败: {e}", err=True)
             if debug:
@@ -110,7 +111,7 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
     click.echo("  2. 进入账号目录 → 聊天目录 → 双击 index.html")
 
 
-def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active=False, active_since=None, active_since_ts=None, debug=False):
+def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active=False, active_since=None, active_since_ts=None, index_file=None, debug=False):
     """导出单个账号的所有聊天"""
     from .export_html import _generate_html, _generate_markdown
 
@@ -340,6 +341,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
 
     exported = 0
     failed = 0
+    exported_chats = []  # 记录导出的聊天文件夹名
 
     for i, chat_info in enumerate(chats, 1):
         chat_name = chat_info['display_name'] or chat_info['username']
@@ -445,6 +447,10 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             md_path.write_text(md_content, encoding="utf-8")
 
             exported += 1
+            
+            # 记录导出的聊天文件夹名（用于索引）
+            # 格式: 账号名/文件夹名
+            exported_chats.append(f"{wxid}/{safe_name}")
 
         except Exception as e:
             click.echo(f"      失败: {e}")
@@ -456,6 +462,17 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
     click.echo("")
     click.echo(f"  成功: {exported} 个聊天")
     click.echo(f"  失败: {failed} 个聊天")
+    
+    # 写入索引文件
+    if index_file and exported_chats:
+        index_path = Path(index_file)
+        index_path.parent.mkdir(parents=True, exist_ok=True)
+        # 累积模式：如果文件已存在，追加
+        mode = 'a' if index_path.exists() else 'w'
+        with open(index_path, mode, encoding='utf-8') as f:
+            for chat_folder in exported_chats:
+                f.write(chat_folder + '\n')
+        click.echo(f"  索引: {index_file} ({len(exported_chats)} 个聊天)")
 
 
 import sqlite3
