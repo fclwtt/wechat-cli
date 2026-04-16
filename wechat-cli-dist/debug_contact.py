@@ -3,7 +3,6 @@ import sqlite3
 import json
 import os
 from pathlib import Path
-import hashlib
 
 # 账号
 account = "wxid_ukfuya4wbm9u12_41b3"
@@ -19,72 +18,65 @@ print(f"密钥数量: {len(keys_data)}")
 contact_keys = [k for k in keys_data if 'contact' in k.lower()]
 print(f"contact 密钥: {contact_keys}")
 
-if not contact_keys:
-    print("未找到 contact 密钥")
-    # 尝试找 MicroMsg.db 里的 contact 信息
-    micromsg_keys = [k for k in keys_data if 'micromsg' in k.lower()]
-    print(f"MicroMsg 密钥: {micromsg_keys}")
-
-# 加载 accounts.json 获取 db_dir
+# 加载 accounts.json
 accounts_json = Path.home() / ".wechat-cli" / "accounts.json"
 accounts_data = json.load(open(accounts_json))
-acc_info = accounts_data.get("accounts_info", {}).get(account, {})
-db_dir = acc_info.get("db_dir")
+
+# accounts.json 可能是列表或字典
+if isinstance(accounts_data, list):
+    # 列表格式：直接包含账号名
+    accounts_list = accounts_data
+    print(f"账号列表: {accounts_list}")
+else:
+    # 字典格式
+    accounts_list = accounts_data.get("accounts", [])
+    print(f"账号列表: {accounts_list}")
+
+# db_dir 从账号名推断
+# 微信数据目录在 D:\WechatMsg\xwechat_files\
+wxid_part = account.split('_')[0] if '_' in account else account
+possible_db_dirs = [
+    f"D:\\WechatMsg\\xwechat_files\\{account}\\db_storage",
+    f"D:\\WechatMsg\\xwechat_files\\{wxid_part}\\db_storage",
+]
+
+db_dir = None
+for p in possible_db_dirs:
+    if os.path.exists(p):
+        db_dir = p
+        break
+
 print(f"db_dir: {db_dir}")
 
-# 查找 contact.db
+# 查找 contact.db（加密的）
 contact_db_path = None
 if db_dir:
-    # 尝试常见路径
-    possible_paths = [
-        os.path.join(db_dir, "contact", "contact.db"),
-        os.path.join(db_dir, "Contact", "contact.db"),
-        os.path.join(db_dir, "misc", "contact.db"),
-    ]
-    for p in possible_paths:
-        if os.path.exists(p):
-            contact_db_path = p
-            break
-
-if not contact_db_path:
-    # 递归搜索
-    print("搜索 contact.db...")
     for root, dirs, files in os.walk(db_dir):
         for f in files:
-            if 'contact' in f.lower() and f.endswith('.db'):
+            if 'contact' in f.lower() and f.endswith('.db') and not f.endswith('_fts.db'):
                 contact_db_path = os.path.join(root, f)
-                print(f"找到: {contact_db_path}")
+                print(f"找到加密 contact.db: {contact_db_path}")
                 break
         if contact_db_path:
             break
 
-# 解密（使用 pysqlcipher3 或 sqlcipher）
-# 这里用 Python 的 sqlcipher 库
-try:
-    from sqlcipher3 import dbapi2 as sqlite
-except ImportError:
-    print("sqlcipher3 未安装，尝试用标准 sqlite3（不解密）")
-    sqlite = sqlite3
-    
-    # 如果 db 加密，会失败
-    # 让用户手动找解密后的文件
-    
-    # 检查 decrypted 目录
-    decrypted_dir = acc_dir / "decrypted"
-    if decrypted_dir.exists():
-        for root, dirs, files in os.walk(str(decrypted_dir)):
-            for f in files:
-                if 'contact' in f.lower() and f.endswith('.db'):
-                    contact_db_path = os.path.join(root, f)
-                    print(f"使用预解密: {contact_db_path}")
-                    break
-            if contact_db_path:
+# 检查 decrypted 目录（预解密的）
+decrypted_dir = acc_dir / "decrypted"
+if decrypted_dir.exists():
+    for root, dirs, files in os.walk(str(decrypted_dir)):
+        for f in files:
+            if 'contact' in f.lower() and f.endswith('.db') and not f.endswith('_fts.db'):
+                contact_db_path = os.path.join(root, f)
+                print(f"使用预解密: {contact_db_path}")
                 break
+        if contact_db_path:
+            break
 
-if contact_db_path:
+if not contact_db_path:
+    print("未找到 contact.db")
+else:
     print(f"\n查询: {contact_db_path}")
     
-    # 尝试连接
     try:
         conn = sqlite3.connect(contact_db_path)
         
@@ -105,7 +97,7 @@ if contact_db_path:
             else:
                 print(f"\n{username} 不在 contact 表里")
                 
-                # 尗试模糊搜索
+                # 嘗试模糊搜索
                 rows = conn.execute(
                     "SELECT username, nick_name, remark, alias FROM contact WHERE username LIKE '%lliab%'"
                 ).fetchall()
@@ -113,23 +105,22 @@ if contact_db_path:
                     print(f"模糊匹配:")
                     for r in rows:
                         print(f"  {r}")
-                else:
-                    print("模糊搜索也没找到")
         except Exception as e:
             print(f"查询失败: {e}")
-            # 可能表结构不同
-            tables = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
-            print(f"表列表: {[t[0] for t in tables]}")
+            # 可能加密或表结构不同
+            try:
+                tables = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+                print(f"表列表: {[t[0] for t in tables]}")
+            except:
+                print("数据库可能加密了，无法读取")
             
         conn.close()
     except Exception as e:
-        print(f"连接失败（可能加密）: {e}")
-else:
-    print("未找到 contact.db")
+        print(f"连接失败: {e}")
 
-# 另一个来源：SessionTable
+# 检查 SessionTable
 print("\n" + "=" * 50)
 print("检查 SessionTable...")
 session_db_path = None
@@ -138,26 +129,50 @@ if db_dir:
         for f in files:
             if 'session' in f.lower() and f.endswith('.db'):
                 session_db_path = os.path.join(root, f)
-                print(f"找到 session.db: {session_db_path}")
                 break
         if session_db_path:
             break
 
+if not session_db_path:
+    # 也可能在 decrypted 目录
+    if decrypted_dir.exists():
+        for root, dirs, files in os.walk(str(decrypted_dir)):
+            for f in files:
+                if 'session' in f.lower() and f.endswith('.db'):
+                    session_db_path = os.path.join(root, f)
+                    break
+
 if session_db_path:
+    print(f"找到 session.db: {session_db_path}")
     try:
         conn = sqlite3.connect(session_db_path)
-        # 查询 SessionTable
-        row = conn.execute(
-            "SELECT username, last_sender_display_name FROM SessionTable WHERE username = ?",
-            [username]
-        ).fetchone()
         
-        if row:
-            uname, display_name = row
-            print(f"\nSessionTable: {username}")
-            print(f"  last_sender_display_name: {display_name or '(空)'}")
-        else:
-            print(f"{username} 不在 SessionTable 里")
+        username = "wxid_lliab48hfu9h22"
+        try:
+            row = conn.execute(
+                "SELECT username, last_sender_display_name FROM SessionTable WHERE username = ?",
+                [username]
+            ).fetchone()
+            
+            if row:
+                uname, display_name = row
+                print(f"\nSessionTable: {username}")
+                print(f"  last_sender_display_name: {display_name or '(空)'}")
+            else:
+                print(f"{username} 不在 SessionTable 里")
+                
+                # 列出所有 SessionTable 条目（前10个）
+                rows = conn.execute(
+                    "SELECT username, last_sender_display_name FROM SessionTable LIMIT 10"
+                ).fetchall()
+                print("\nSessionTable 示例:")
+                for uname, display in rows:
+                    print(f"  {uname}: {display or '(空)'}")
+        except Exception as e:
+            print(f"查询失败: {e}")
+            
         conn.close()
     except Exception as e:
-        print(f"查询失败: {e}")
+        print(f"连接失败: {e}")
+else:
+    print("未找到 session.db")
