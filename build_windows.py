@@ -44,7 +44,7 @@ spec_content = '''# -*- mode: python ; coding: utf-8 -*-
 block_cipher = None
 
 a = Analysis(
-    ['wechat_cli/main.py'],
+    ['entry.py'],
     pathex=[],
     binaries=[],
     datas=[],
