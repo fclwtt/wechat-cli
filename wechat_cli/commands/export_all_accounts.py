@@ -208,16 +208,13 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                 debug_log(f"SessionTable 列名: {columns}")
                 
                 # 尝试找到存储聊天名称的列
-                # 注意：last_sender_display_name 是最后发送者的名字，不是群名
-                # 群聊应该用 contact.nick_name，私聊可以用 last_sender_display_name
+                # 只用真正的名称列，不用 last_sender_display_name
+                # last_sender_display_name 是最后发送者的名字，不稳定且不准确
                 name_column = None
                 for candidate in ['nickname', 'display_name', 'name', 'nick_name']:
                     if candidate in columns:
                         name_column = candidate
                         break
-                
-                # last_sender_display_name 只用于私聊补充
-                use_last_sender = 'last_sender_display_name' in columns and not name_column
                 
                 if 'username' not in columns:
                     debug_log("SessionTable 没有 username 列，跳过")
@@ -236,21 +233,18 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                         elif uname and display_name and names.get(uname) == uname:
                             # 如果已有 username 作为显示名，用显示名替换
                             names[uname] = display_name
-                elif use_last_sender:
-                    # 只用 last_sender_display_name 补充私聊
-                    debug_log("使用列: username, last_sender_display_name (仅私聊)")
+                else:
+                    debug_log("SessionTable 没有名称列，只补充 username 到 hash 映射")
                     session_rows = conn.execute(
-                        "SELECT username, last_sender_display_name FROM SessionTable"
+                        "SELECT username FROM SessionTable"
                     ).fetchall()
-                    for uname, display_name in session_rows:
-                        # 只补充私聊（不包含 @chatroom）
-                        if uname and '@chatroom' not in uname and uname not in names:
-                            names[uname] = display_name if display_name else uname
+                    for uname in session_rows:
+                        uname = uname[0]
+                        if uname:
                             h = hashlib.md5(uname.encode()).hexdigest()
                             hash_to_username[h] = uname
-                else:
-                    debug_log("SessionTable 没有找到名称列，只补充 username")
-                    # 没有名称列，只补充 username 到 hash_to_username
+                            if uname not in names:
+                                names[uname] = uname
                     session_rows = conn.execute("SELECT username FROM SessionTable").fetchall()
                     for (uname,) in session_rows:
                         if uname:
