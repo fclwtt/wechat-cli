@@ -20,15 +20,17 @@ from ..core.messages import resolve_chat_context, collect_chat_history, parse_ti
 @click.option("--start-time", default=None, help="开始时间 (YYYY-MM-DD)")
 @click.option("--end-time", default=None, help="结束时间 (YYYY-MM-DD)")
 @click.option("--only-active", is_flag=True, help="只导出指定时间范围内有消息的聊天")
+@click.option("--active-since", default=None, help="筛选指定日期有消息的聊天，但导出全部历史 (YYYY-MM-DD)，如 --active-since 2026-04-15")
 @click.option("--debug", is_flag=True, help="显示详细调试信息")
-def export_all_accounts(output_path, limit, max_chats, start_time, end_time, only_active, debug):
+def export_all_accounts(output_path, limit, max_chats, start_time, end_time, only_active, active_since, debug):
     """导出所有账号的聊天记录为 HTML 页面（纯文字版）
 
     \b
     示例:
       wechat-cli export-all-accounts                     # 导出到 ~/wechat-chats-backup/
       wechat-cli export-all-accounts --output ~/backup   # 导出到指定目录
-      wechat-cli export-all-accounts --start-time 2026-04-12 --end-time 2026-04-12  # 每日导出
+      wechat-cli export-all-accounts --start-time 2026-04-12 --end-time 2026-04-12  # 导出指定日期的消息
+      wechat-cli export-all-accounts --active-since 2026-04-15  # 筛选昨天有消息的聊天，导出全部历史
       wechat-cli export-all-accounts --debug             # 显示调试信息
     """
     # 调试输出函数
@@ -71,8 +73,11 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 解析时间范围
+    # 解析时间范围（用于导出消息的时间过滤）
     start_ts, end_ts = parse_time_range(start_time or '', end_time or '')
+    
+    # 解析 active-since 时间范围（用于筛选聊天，不限制导出时间）
+    active_since_ts, _ = parse_time_range(active_since or '', active_since or '') if active_since else (None, None)
 
     click.echo("")
     click.echo("=" * 60)
@@ -87,7 +92,7 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
         click.echo("-" * 40)
 
         try:
-            _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active, debug)
+            _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active, active_since, active_since_ts, debug)
         except Exception as e:
             click.echo(f"  导出失败: {e}", err=True)
             if debug:
@@ -105,7 +110,7 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
     click.echo("  2. 进入账号目录 → 聊天目录 → 双击 index.html")
 
 
-def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active=False, debug=False):
+def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active=False, active_since=None, active_since_ts=None, debug=False):
     """导出单个账号的所有聊天"""
     from .export_html import _generate_html, _generate_markdown
 
@@ -248,6 +253,20 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                                     continue
                                 debug_log(f"{table_name}: 时间范围内有 {active_count} 条消息")
                             
+                            # 如果指定了 --active-since，检查该日期是否有消息（筛选聊天，不限制导出时间）
+                            if active_since_ts:
+                                # 一天的时间范围：从 active_since_ts 到 active_since_ts + 86400
+                                active_row = conn.execute(
+                                    f"SELECT COUNT(*) FROM [{table_name}] WHERE create_time >= ? AND create_time <= ?",
+                                    [active_since_ts, active_since_ts + 86400]
+                                ).fetchone()
+                                active_count = active_row[0] if active_row else 0
+                                if active_count == 0:
+                                    # 该日期无消息，跳过
+                                    debug_log(f"跳过 {table_name}: --active-since 日期内无消息")
+                                    continue
+                                debug_log(f"{table_name}: --active-since 日期内有 {active_count} 条消息")
+                            
                             display_name = display_name_fn(chat_username, names)
                             
                             chats.append({
@@ -310,9 +329,13 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             chat_dir.mkdir(parents=True, exist_ok=True)
 
             # 收集消息（使用已有函数）
+            # 如果用了 --active-since，不限制导出时间（导出全部历史）
+            export_start_ts = None if active_since_ts else start_ts
+            export_end_ts = None if active_since_ts else end_ts
+            
             lines, failures = collect_chat_history(
                 chat_ctx, names, display_name_fn,
-                start_ts=start_ts, end_ts=end_ts, limit=limit, offset=0,
+                start_ts=export_start_ts, end_ts=export_end_ts, limit=limit, offset=0,
             )
 
             if not lines:
@@ -352,11 +375,15 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                 })
 
             # 生成 HTML
+            # 如果用了 --active-since，时间显示为 "最早" 到 "最新"
+            html_start_time = "最早" if active_since_ts else (start_time or "最早")
+            html_end_time = "最新" if active_since_ts else (end_time or "最新")
+            
             html_content = _generate_html(
                 chat_name,
                 chat_ctx.get('is_group', False),
-                start_time or "最早",
-                end_time or "最新",
+                html_start_time,
+                html_end_time,
                 messages,
             )
 
@@ -367,8 +394,8 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             md_content = _generate_markdown(
                 chat_name,
                 chat_ctx.get('is_group', False),
-                start_time or "最早",
-                end_time or "最新",
+                html_start_time,
+                html_end_time,
                 messages,
             )
 

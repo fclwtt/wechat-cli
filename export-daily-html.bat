@@ -20,7 +20,7 @@ set CLI_PATH=%~dp0wechat-cli.exe
 REM Calculate yesterday's date
 for /f "tokens=*" %%a in ('powershell -command "(Get-Date).AddDays(-1).ToString('yyyy-MM-dd')"') do set YESTERDAY=%%a
 
-echo Export Date: %YESTERDAY% (yesterday)
+echo Active Since: %YESTERDAY% (yesterday)
 echo.
 
 REM Set output directory (same as full export)
@@ -29,11 +29,11 @@ echo Output: %OUTPUT_DIR%
 echo.
 
 echo Updating chat records...
-echo Note: Only chats with new messages yesterday will be updated (full history)
+echo Note: Only chats with new messages yesterday will be updated (FULL HISTORY)
 echo.
 
-REM Run daily update (only chats with messages yesterday, overwrite existing, no limits)
-"%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%" --start-time "%YESTERDAY%" --end-time "%YESTERDAY%" --only-active
+REM Run daily update (only chats with messages yesterday, export FULL history)
+"%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%" --active-since "%YESTERDAY%"
 
 echo.
 echo ============================================================
