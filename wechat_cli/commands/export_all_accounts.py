@@ -255,6 +255,11 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                         chat_username = f"unknown_{table_hash}"
                         names[chat_username] = chat_username
                         debug_log(f"表 {table_name} hash={table_hash} 没匹配到联系人，用 hash 作为 username")
+                    
+                    # 跳过公众号（gh_ 开头）
+                    if chat_username.startswith('gh_'):
+                        debug_log(f"跳过公众号: {chat_username}")
+                        continue
 
                     # 获取最新消息时间
                     try:
