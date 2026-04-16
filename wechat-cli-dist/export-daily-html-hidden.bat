@@ -18,9 +18,9 @@ echo [OK] wechat-cli.exe found >> "%LOG_FILE%"
 
 set CLI_PATH=%~dp0wechat-cli.exe
 
-REM Calculate yesterday's date
+REM Calculate yesterday's date (usebackq to allow nested quotes)
 echo [STEP] Calculating yesterday date... >> "%LOG_FILE%"
-for /f "tokens=* %%a in ('powershell -command "(Get-Date).AddDays(-1).ToString('yyyy-MM-dd')"' 2>nul) do set YESTERDAY=%%a
+for /f "usebackq tokens=* %%a in (`powershell -command "(Get-Date).AddDays(-1).ToString('yyyy-MM-dd')"`) do set YESTERDAY=%%a
 
 echo [OK] YESTERDAY=%YESTERDAY% >> "%LOG_FILE%"
 
