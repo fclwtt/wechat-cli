@@ -7,8 +7,8 @@ echo   wechat-cli-dist 一键更新
 echo ============================================================
 echo.
 
-REM 设置源码目录（上一级目录，因为 dist 在仓库内）
-set SOURCE_DIR=%~dp0..
+REM 设置源码目录（同级目录）
+set SOURCE_DIR=%~dp0..\wechat-cli
 set DIST_DIR=%~dp0
 
 echo 源码目录: %SOURCE_DIR%
