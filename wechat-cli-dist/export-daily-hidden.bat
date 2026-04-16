@@ -16,11 +16,11 @@ if not exist "%~dp0wechat-cli.exe" (
 echo [OK] wechat-cli.exe found >> "%LOG_FILE%"
 
 REM Output directory
-set OUTPUT_DIR=E:\wechat-chats-backup
+set OUTPUT_DIR=C:\Users\13658\wechat-chats-backup
 
 echo [STEP] Starting daily export... >> "%LOG_FILE%"
 
-REM Run daily update (--daily auto-calculates yesterday)
+REM Run daily export (--daily auto-calculates yesterday, generates index)
 "%~dp0wechat-cli.exe" export-all-accounts --output "%OUTPUT_DIR%" --daily >> "%LOG_FILE%" 2>&1
 
 echo [DONE] Completed at %time% >> "%LOG_FILE%"

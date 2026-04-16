@@ -7,25 +7,48 @@
 | 文件 | 说明 |
 |------|------|
 | wechat-cli.exe | 主程序（需要构建） |
-| init.bat | 初始化账号密钥 |
-| export-all-accounts.bat | 导出所有账号全部聊天记录 |
-| export-daily-html.bat | 每日增量导出（显示窗口） |
-| export-daily-html-hidden.bat | 每日增量导出（隐藏窗口） |
-| export-daily-html-silent.vbs | 双击后台执行，完成后弹窗提示 |
-| setup-scheduled-task.ps1 | 创建 Windows 定时任务 |
-| update-dist.bat | 一键更新（拉取源码 + 构建） |
+| init.bat | 初始化账号密钥（双击运行） |
+| export-all-accounts.bat | 全量导出（显示窗口） |
+| export-all-silent.vbs | 全量导出（隙执行，完成后弹窗） |
+| export-daily-silent.vbs | 每日导出（隙执行，完成后弹窗） |
+| update-dist.bat | 一键更新（拉取 + 构建） |
 
 ## 使用方式
 
-### 本机更新
+### 首次使用
 ```cmd
-cd E:\wechat-cli-build\wechat-cli\wechat-cli-dist
-update-dist.bat
+双击 init.bat
 ```
 
-### 分发给别人
-直接打包整个 `wechat-cli-dist` 文件夹即可（exe 需要 building）。
+### 全量导出（所有聊天）
+```cmd
+双击 export-all-silent.vbs
+```
+
+### 每日导出（昨天有新消息的聊天）
+```cmd
+双击 export-daily-silent.vbs
+```
+
+### 设置定时任务（每天自动导出）
+```cmd
+schtasks /create /tn "WeChatDailyExport" /tr "E:\wechat-cli-build\wechat-cli\wechat-cli-dist\export-daily-silent.vbs" /sc daily /st 10:30 /rl HIGHEST /f
+```
 
 ## 输出目录
-- 默认: E:\wechat-chats-backup
-- 每日索引: E:\wechat-chats-backup\daily-index\YYYY-MM-DD.txt
+- 默认: C:\Users\13658\wechat-chats-backup
+- 每日索引: daily-index\YYYY-MM-DD.txt（记录更新的聊天）
+
+## 更新
+```cmd
+双击 update-dist.bat
+```
+
+## 日志文件
+- export-daily-log.txt: 每日导出日志
+- export-all-log.txt: 全量导出日志
+
+## 注意事项
+1. 微信必须保持登录状态（后台运行即可）
+2. 首次运行会解密数据库（慢），后续运行复用缓存（快）
+3. 定时任务需要电脑开机才能执行
