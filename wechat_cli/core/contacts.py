@@ -9,7 +9,12 @@ import sqlite3
 
 
 def _load_contacts_from(db_path):
-    """从 contact.db 加载联系人"""
+    """从 contact.db 加载联系人
+    
+    对于群聊：
+    - 如果有 nick_name/remark，直接用
+    - 如果没有，用群成员昵称组合（模拟微信默认行为）
+    """
     names = {}
     full = []
     conn = sqlite3.connect(db_path)
@@ -19,6 +24,41 @@ def _load_contacts_from(db_path):
             display = remark if remark else nick if nick else uname
             names[uname] = display
             full.append({'username': uname, 'nick_name': nick or '', 'remark': remark or ''})
+        
+        # 对于没有名字的群聊，用群成员昵称组合
+        for uname, display in names.items():
+            if '@chatroom' in uname and display == uname:  # 群聊且没有名字
+                try:
+                    # 查找群成员
+                    id_row = conn.execute("SELECT id FROM contact WHERE username = ?", [uname]).fetchone()
+                    if id_row:
+                        room_id = id_row[0]
+                        member_rows = conn.execute(
+                            "SELECT member_id FROM chatroom_member WHERE room_id = ?",
+                            [room_id]
+                        ).fetchall()
+                        
+                        if member_rows:
+                            member_ids = [m[0] for m in member_rows]
+                            placeholders = ','.join('?' * len(member_ids))
+                            member_info = conn.execute(
+                                f"SELECT username, nick_name, remark FROM contact WHERE id IN ({placeholders})",
+                                member_ids
+                            ).fetchall()
+                            
+                            # 组合群名（最多5个成员）
+                            member_names = []
+                            for m_uname, m_nick, m_remark in member_info[:5]:
+                                m_display = m_remark if m_remark else m_nick if m_nick else m_uname
+                                # 简化显示名（去掉特殊字符）
+                                m_display = m_display[:10] if len(m_display) > 10 else m_display
+                                member_names.append(m_display)
+                            
+                            # 组合：成员1、成员2、成员3 (N人)
+                            combined = "、".join(member_names) + f" ({len(member_rows)}人)"
+                            names[uname] = combined
+                except Exception:
+                    pass  # 查询失败，保持原样
     finally:
         conn.close()
     return names, full
