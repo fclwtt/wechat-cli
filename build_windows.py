@@ -5,7 +5,7 @@ Windows exe 打包脚本
 使用方法（在 Windows 上运行）：
 1. pip install pyinstaller
 2. python build_windows.py
-3. 生成的 exe 在 dist/wechat-cli.exe
+3. exe 自动复制到 wechat-cli-dist/wechat-cli.exe
 """
 
 import os
@@ -135,15 +135,25 @@ if result.returncode == 0:
     exe_path = os.path.join("dist", "wechat-cli.exe")
     if os.path.exists(exe_path):
         size_mb = os.path.getsize(exe_path) / 1024 / 1024
+        
+        # 复制到分发目录
+        dist_dir = "wechat-cli-dist"
+        if os.path.exists(dist_dir):
+            dest_path = os.path.join(dist_dir, "wechat-cli.exe")
+            shutil.copy2(exe_path, dest_path)
+            print(f"\n  已复制到: {dest_path}")
+        
         print("\n" + "=" * 60)
         print("  打包成功!")
         print("=" * 60)
-        print(f"\n  输出: {os.path.abspath(exe_path)}")
+        print(f"\n  构建: {os.path.abspath(exe_path)}")
+        print(f"  分发: {os.path.abspath(os.path.join(dist_dir, 'wechat-cli.exe'))}")
         print(f"  大小: {size_mb:.1f} MB")
         print("\n使用方法:")
+        print("  cd wechat-cli-dist")
         print("  wechat-cli.exe init          # 初始化")
-        print("  wechat-cli.exe sessions     # 查看会话")
-        print("  wechat-cli.exe history \"张三\"  # 查看聊天记录")
+        print("  wechat-cli.exe sessions      # 查看会话")
+        print("  wechat-cli.exe --daily       # 每日导出")
     else:
         print("\n[!] 未找到输出文件")
         sys.exit(1)
