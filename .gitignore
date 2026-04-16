@@ -42,3 +42,6 @@ Thumbs.db
 # Temp files
 *.tmp
 *.bak
+
+# Distribution folder exe (built locally)
+wechat-cli-dist/*.exe
