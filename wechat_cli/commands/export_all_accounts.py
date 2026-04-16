@@ -187,20 +187,45 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
     if session_db_path:
         try:
             with closing(sqlite3.connect(session_db_path)) as conn:
-                # 微信 4.x SessionTable: username + last_sender_display_name
-                session_rows = conn.execute(
-                    "SELECT username, last_sender_display_name FROM SessionTable"
-                ).fetchall()
-                debug_log(f"SessionTable 会话数: {len(session_rows)}")
-                for uname, display_name in session_rows:
-                    if uname and uname not in names:
-                        # 补充到 names（用 last_sender_display_name 或 username）
-                        names[uname] = display_name if display_name else uname
-                        h = hashlib.md5(uname.encode()).hexdigest()
-                        hash_to_username[h] = uname
-                    elif uname and display_name and names.get(uname) == uname:
-                        # 如果已有 username 作为显示名，用 last_sender_display_name 替换
-                        names[uname] = display_name
+                # 先探测 SessionTable 的实际列名
+                columns = [col[1] for col in conn.execute("PRAGMA table_info(SessionTable)").fetchall()]
+                debug_log(f"SessionTable 列名: {columns}")
+                
+                # 尝试找到存储聊天名称的列
+                # 微信不同版本列名不同：nickname, display_name, last_sender_display_name, name 等
+                name_column = None
+                for candidate in ['nickname', 'display_name', 'name', 'nick_name', 'last_sender_display_name']:
+                    if candidate in columns:
+                        name_column = candidate
+                        break
+                
+                if 'username' not in columns:
+                    debug_log("SessionTable 没有 username 列，跳过")
+                elif name_column:
+                    debug_log(f"使用列: username, {name_column}")
+                    session_rows = conn.execute(
+                        f"SELECT username, {name_column} FROM SessionTable"
+                    ).fetchall()
+                    debug_log(f"SessionTable 会话数: {len(session_rows)}")
+                    for uname, display_name in session_rows:
+                        if uname and uname not in names:
+                            # 补充到 names
+                            names[uname] = display_name if display_name else uname
+                            h = hashlib.md5(uname.encode()).hexdigest()
+                            hash_to_username[h] = uname
+                        elif uname and display_name and names.get(uname) == uname:
+                            # 如果已有 username 作为显示名，用显示名替换
+                            names[uname] = display_name
+                else:
+                    debug_log("SessionTable 没有找到名称列，只补充 username")
+                    # 没有名称列，只补充 username 到 hash_to_username
+                    session_rows = conn.execute("SELECT username FROM SessionTable").fetchall()
+                    for (uname,) in session_rows:
+                        if uname:
+                            h = hashlib.md5(uname.encode()).hexdigest()
+                            hash_to_username[h] = uname
+                            if uname not in names:
+                                names[uname] = uname  # 用 username 作为显示名
         except Exception as e:
             debug_log(f"读取 session.db 失败: {e}")
 
@@ -269,14 +294,26 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                             
                             display_name = display_name_fn(chat_username, names)
                             
-                            chats.append({
-                                'username': chat_username,
-                                'display_name': display_name,
-                                'db_path': db_path,
-                                'table_name': table_name,
-                                'max_time': max_time,
-                                'count': count,
-                            })
+                            # 检查是否已存在（去重，防止同一 username 多个 Msg 表）
+                            existing = [c for c in chats if c['username'] == chat_username]
+                            if existing:
+                                # 已存在，合并消息数和更新时间
+                                old = existing[0]
+                                old['count'] += count
+                                if max_time > old['max_time']:
+                                    old['max_time'] = max_time
+                                    old['db_path'] = db_path
+                                    old['table_name'] = table_name
+                                debug_log(f"合并 {table_name}: {chat_username} 已存在，合并消息数")
+                            else:
+                                chats.append({
+                                    'username': chat_username,
+                                    'display_name': display_name,
+                                    'db_path': db_path,
+                                    'table_name': table_name,
+                                    'max_time': max_time,
+                                    'count': count,
+                                })
                     except Exception as e:
                         if debug:
                             debug_log(f"查询 {table_name} 失败: {e}")
