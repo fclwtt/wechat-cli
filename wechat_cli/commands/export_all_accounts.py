@@ -21,9 +21,10 @@ from ..core.messages import resolve_chat_context, collect_chat_history, parse_ti
 @click.option("--end-time", default=None, help="结束时间 (YYYY-MM-DD)")
 @click.option("--only-active", is_flag=True, help="只导出指定时间范围内有消息的聊天")
 @click.option("--active-since", default=None, help="筛选指定日期有消息的聊天，但导出全部历史 (YYYY-MM-DD)，如 --active-since 2026-04-15")
+@click.option("--daily", is_flag=True, help="每日导出模式：自动计算昨天日期，等同于 --active-since YESTERDAY")
 @click.option("--index-file", default=None, help="索引文件路径，记录导出的聊天列表")
 @click.option("--debug", is_flag=True, help="显示详细调试信息")
-def export_all_accounts(output_path, limit, max_chats, start_time, end_time, only_active, active_since, index_file, debug):
+def export_all_accounts(output_path, limit, max_chats, start_time, end_time, only_active, active_since, daily, index_file, debug):
     """导出所有账号的聊天记录为 HTML 页面（纯文字版）
 
     \b
@@ -39,6 +40,13 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
         if debug:
             click.echo(f"[DEBUG] {msg}")
 
+    # 处理 --daily 参数：自动计算昨天日期
+    if daily:
+        from datetime import date, timedelta
+        yesterday = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+        active_since = yesterday
+        click.echo(f"[DAILY] 自动计算昨天日期: {yesterday}")
+    
     debug_log(f"ACCOUNTS_DIR = {ACCOUNTS_DIR}")
     debug_log(f"ACCOUNTS_INDEX_FILE = {ACCOUNTS_INDEX_FILE}")
     debug_log(f"accounts index exists = {os.path.exists(ACCOUNTS_INDEX_FILE)}")
@@ -73,6 +81,13 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
         output_dir = Path.home() / "wechat-chats-backup"
 
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 处理 --daily 模式的索引文件：自动生成路径
+    if daily and not index_file:
+        index_dir = output_dir / "daily-index"
+        index_dir.mkdir(parents=True, exist_ok=True)
+        index_file = str(index_dir / f"{active_since}.txt")
+        click.echo(f"[DAILY] 索引文件: {index_file}")
 
     # 解析时间范围（用于导出消息的时间过滤）
     start_ts, end_ts = parse_time_range(start_time or '', end_time or '')
