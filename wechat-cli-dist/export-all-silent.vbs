@@ -8,4 +8,4 @@ batPath = CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript
 WshShell.Run "cmd /c """"" & batPath & """""", 0, True
 
 ' Show completion message
-MsgBox "WeChat Full Export Complete!" & vbCrLf & vbCrLf & "Output: C:\Users\13658\wechat-chats-backup", vbInformation, "Export Complete"
+MsgBox "WeChat Full Export Complete!" & vbCrLf & vbCrLf & "Output: E:\共享文件夹\wechat-chats-backup", vbInformation, "Export Complete"

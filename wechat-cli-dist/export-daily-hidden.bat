@@ -16,7 +16,7 @@ if not exist "%~dp0wechat-cli.exe" (
 echo [OK] wechat-cli.exe found >> "%LOG_FILE%"
 
 REM Output directory
-set OUTPUT_DIR=C:\Users\13658\wechat-chats-backup
+set OUTPUT_DIR=E:\共享文件夹\wechat-chats-backup
 
 echo [STEP] Starting daily export... >> "%LOG_FILE%"
 
