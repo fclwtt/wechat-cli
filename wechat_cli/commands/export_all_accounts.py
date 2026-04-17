@@ -603,11 +603,16 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
     if index_file and exported_chats:
         index_path = Path(index_file)
         index_path.parent.mkdir(parents=True, exist_ok=True)
-        # 累积模式：如果文件已存在，追加
+        # 判断是否新文件
+        is_new_file = not index_path.exists()
         mode = 'a' if index_path.exists() else 'w'
         with open(index_path, mode, encoding='utf-8') as f:
+            # 新文件写入表头
+            if is_new_file:
+                f.write("# 导出索引 - " + datetime.now().strftime('%Y-%m-%d') + "\n")
+                f.write("# 格式: 账号/文件夹名 | 最后消息时间 | 消息数 | 备注名 | 昵称\n")
+                f.write("#" + "=" * 80 + "\n\n")
             for chat in exported_chats:
-                # 格式: 账号/文件夹名 | 最后消息时间 | 消息数 | 备注名 | 昵称
                 remark_display = chat['remark'] if chat['remark'] else '(无备注)'
                 nick_display = chat['nick_name'] if chat['nick_name'] else '(无昵称)'
                 f.write(f"{chat['path']} | {chat['last_msg_time']} | {chat['count']}条 | {remark_display} | {nick_display}\n")
