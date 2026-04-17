@@ -407,9 +407,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
         # 如果 display_name 是表名(Msg_xxx)，显示 username
         if chat_name.startswith('Msg_'):
             chat_name = chat_info['username'] if not chat_info['username'].startswith('Msg_') else chat_name
-        # 过滤 emoji（Windows CMD 无法显示）
-        chat_name_safe = re.sub(r'[\U00010000-\U0010ffff]', '', chat_name)
-        click.echo(f"    [{i}/{len(chats)}] {chat_name_safe}")
+        click.echo(f"    [{i}/{len(chats)}] {chat_name}")
 
         try:
             step_start = time.time()
