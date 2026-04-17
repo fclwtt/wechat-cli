@@ -139,13 +139,12 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
     click.echo("")
 
     for wxid in accounts:
-        click.echo(f"\n[账号] {wxid}")
-        click.echo("-" * 40)
-
         try:
-            _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active, active_since, active_since_ts, index_file, debug)
+            account_folder_name = _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active, active_since, active_since_ts, index_file, debug)
+            click.echo(f"\n[账号] {account_folder_name}")
+            click.echo("-" * 40)
         except Exception as e:
-            safe_echo(f"  导出失败: {e}", err=True)
+            safe_echo(f"\n[账号] {wxid} - 导出失败: {e}", err=True)
             if debug:
                 import traceback
                 traceback.print_exc()
@@ -220,8 +219,9 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
         name = names_dict.get(username, '')
         return name if name else username
 
-    # 账号输出目录
-    account_dir = output_dir / wxid
+    # 账号输出目录（用昵称显示，加 wxid 后缀避免重名）
+    account_folder_name = f"{self_display_name}_{wxid}" if self_display_name else wxid
+    account_dir = output_dir / account_folder_name
     account_dir.mkdir(parents=True, exist_ok=True)
 
     # 查找所有聊天
@@ -576,7 +576,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             # 格式: 账号名/文件夹名 | 最后消息时间 | 消息数 | 备注名 | 昵称
             last_msg_time = datetime.fromtimestamp(chat_info['max_time']).strftime('%Y-%m-%d %H:%M')
             exported_chats.append({
-                'path': f"{wxid}/{safe_name}",
+                'path': f"{account_folder_name}/{safe_name}",
                 'last_msg_time': last_msg_time,
                 'count': chat_info['count'],
                 'remark': remark,
@@ -614,4 +614,5 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
         click.echo(f"  索引: {index_file} ({len(exported_chats)} 个聊天)")
 
 
+    return account_folder_name
 import sqlite3
