@@ -78,7 +78,8 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
     if output_path:
         output_dir = Path(output_path)
     else:
-        output_dir = Path.home() / "wechat-chats-backup"
+        # Windows 默认路径
+        output_dir = Path(r"E:\共享文件夹\wechat-chats-backup")
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -515,8 +516,13 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             exported += 1
             
             # 记录导出的聊天文件夹名（用于索引）
-            # 格式: 账号名/文件夹名
-            exported_chats.append(f"{wxid}/{safe_name}")
+            # 格式: 账号名/文件夹名 | 最后消息时间 | 消息数
+            last_msg_time = datetime.fromtimestamp(chat_info['max_time']).strftime('%Y-%m-%d %H:%M')
+            exported_chats.append({
+                'path': f"{wxid}/{safe_name}",
+                'last_msg_time': last_msg_time,
+                'count': chat_info['count'],
+            })
             
             chat_total = time.time() - chat_start
             if chat_total > 1.0:
@@ -541,8 +547,8 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
         # 累积模式：如果文件已存在，追加
         mode = 'a' if index_path.exists() else 'w'
         with open(index_path, mode, encoding='utf-8') as f:
-            for chat_folder in exported_chats:
-                f.write(chat_folder + '\n')
+            for chat in exported_chats:
+                f.write(f"{chat['path']} | {chat['last_msg_time']} | {chat['count']}条\n")
         click.echo(f"  索引: {index_file} ({len(exported_chats)} 个聊天)")
 
 
