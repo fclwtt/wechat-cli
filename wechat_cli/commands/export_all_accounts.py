@@ -150,7 +150,7 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
     click.echo("")
     click.echo("使用方法:")
     click.echo(f"  1. 打开文件夹: {output_dir}")
-    click.echo("  2. 进入账号目录 → 聊天目录 → 双击 index.html")
+    click.echo("  2. 进入账号目录 → 聊天目录 → 双击聊天名.html")
 
 
 def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active=False, active_since=None, active_since_ts=None, index_file=None, debug=False):
@@ -520,7 +520,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             if html_time > 0.5:
                 click.echo(f"      [慢] 生成HTML耗时: {html_time:.2f}s")
 
-            html_path = chat_dir / "index.html"
+            html_path = chat_dir / f"{safe_name}.html"
             html_path.write_text(html_content, encoding="utf-8")
 
             # 生成 Markdown
@@ -536,7 +536,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             if md_time > 0.5:
                 click.echo(f"      [慢] 生成MD耗时: {md_time:.2f}s")
 
-            md_path = chat_dir / "index.md"
+            md_path = chat_dir / f"{safe_name}.md"
             md_path.write_text(md_content, encoding="utf-8")
 
             exported += 1
