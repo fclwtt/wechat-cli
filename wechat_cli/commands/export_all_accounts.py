@@ -345,6 +345,17 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                     if not is_private_chat:
                         debug_log(f"跳过非私聊: {chat_username}")
                         continue
+                    
+                    # 进一步检查：查询 local_type 和 verify_flag，排除服务号
+                    contact_detail = get_contact_detail(chat_username, cache, decrypted_dir)
+                    if contact_detail:
+                        local_type = contact_detail.get('local_type', 0)
+                        verify_flag = contact_detail.get('verify_flag', 0)
+                        # local_type != 1 → 不是个人联系人，跳过
+                        # verify_flag > 0 → 认证账号（服务号），跳过
+                        if local_type != 1 or verify_flag > 0:
+                            debug_log(f"跳过服务号: {chat_username} (local_type={local_type}, verify_flag={verify_flag})")
+                            continue
 
                     # 获取最新消息时间
                     try:
