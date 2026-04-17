@@ -18,21 +18,20 @@ if sys.platform == 'win32':
     except:
         pass
 
-# 安全输出函数：替换无法编码的字符
+# 安全输出函数：直接用 sys.stdout，绕过 Click 的编码机制
 def safe_echo(msg, err=False):
-    """安全输出，Windows CMD 下替换 emoji 为问号"""
+    """安全输出，绕过 Click 直接用 sys.stdout"""
+    import sys as _sys
+    target = _sys.stderr if err else _sys.stdout
     try:
-        click.echo(msg, err=err)
+        target.write(msg + '\n')
+        target.flush()
     except UnicodeEncodeError:
-        # 用 UTF-8 编码，替换无法编码的字符为 '?'
-        safe_msg = msg.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
-        try:
-            click.echo(safe_msg, err=err)
-        except UnicodeEncodeError:
-            # 最后保险：移除所有 emoji 和特殊字符
-            import re
-            clean_msg = re.sub(r'[\U00010000-\U0010ffff]', '', msg)
-            click.echo(clean_msg, err=err)
+        # Windows CMD fallback：移除 emoji
+        import re
+        clean_msg = re.sub(r'[\U00010000-\U0010ffff]', '', msg)
+        target.write(clean_msg + '\n')
+        target.flush()
 
 from ..core.config import ACCOUNTS_DIR, ACCOUNTS_INDEX_FILE, list_accounts, load_account_config
 from ..core.db_cache import DBCache
