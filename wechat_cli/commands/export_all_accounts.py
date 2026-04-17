@@ -326,14 +326,17 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                         names[chat_username] = chat_username
                         debug_log(f"表 {table_name} hash={table_hash} 没匹配到联系人，用 hash 作为 username")
                     
-                    # 跳过公众号（gh_ 开头）
-                    if chat_username.startswith('gh_'):
-                        debug_log(f"跳过公众号: {chat_username}")
-                        continue
+                    # 只保留私聊：wxid_ 开头或普通微信号（不含特殊标识）
+                    # 排除：群聊(@chatroom)、公众号(gh_)、文件传输助手(filehelper)、系统账号(weixin等)
+                    is_private_chat = False
+                    if chat_username.startswith('wxid_'):
+                        is_private_chat = True
+                    elif '@chatroom' not in chat_username and not chat_username.startswith('gh_') and not chat_username.startswith('filehelper') and not chat_username.startswith('weixin'):
+                        # 普通微信号格式（不含特殊标识）
+                        is_private_chat = True
                     
-                    # 跳过群聊（@chatroom）
-                    if '@chatroom' in chat_username:
-                        debug_log(f"跳过群聊: {chat_username}")
+                    if not is_private_chat:
+                        debug_log(f"跳过非私聊: {chat_username}")
                         continue
 
                     # 获取最新消息时间
