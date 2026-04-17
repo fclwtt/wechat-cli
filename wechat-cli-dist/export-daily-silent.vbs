@@ -8,4 +8,4 @@ batPath = CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript
 WshShell.Run "cmd /c """"" & batPath & """""", 0, True
 
 ' Show completion message
-MsgBox "WeChat Daily Export Complete!" & vbCrLf & vbCrLf & "Output: E:\共享文件夹\wechat-chats-backup" & vbCrLf & "Index: daily-index\YYYY-MM-DD.txt", vbInformation, "Export Complete"
+MsgBox "WeChat Daily Export Complete!" & vbCrLf & vbCrLf & "Output folder ready." & vbCrLf & "Index: daily-index\YYYY-MM-DD.txt", vbInformation, "Export Complete"
