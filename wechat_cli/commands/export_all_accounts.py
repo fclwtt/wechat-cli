@@ -115,6 +115,14 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
         index_dir.mkdir(parents=True, exist_ok=True)
         index_file = str(index_dir / f"{active_since}.txt")
         click.echo(f"[DAILY] 索引文件: {index_file}")
+    
+    # 全量导出也生成索引
+    if not daily and not index_file:
+        index_dir = output_dir / "export-index"
+        index_dir.mkdir(parents=True, exist_ok=True)
+        from datetime import date
+        index_file = str(index_dir / f"{date.today().strftime('%Y-%m-%d')}.txt")
+        click.echo(f"[EXPORT] 索引文件: {index_file}")
 
     # 解析时间范围（用于导出消息的时间过滤）
     start_ts, end_ts = parse_time_range(start_time or '', end_time or '')
@@ -321,10 +329,9 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                     # 用 hash 反查 username
                     chat_username = hash_to_username.get(table_hash)
                     if not chat_username:
-                        # 没找到匹配的联系人，用 hash 作为 username（导出未知聊天）
-                        chat_username = f"unknown_{table_hash}"
-                        names[chat_username] = chat_username
-                        debug_log(f"表 {table_name} hash={table_hash} 没匹配到联系人，用 hash 作为 username")
+                        # 没找到匹配的联系人，跳过（无法识别身份）
+                        debug_log(f"表 {table_name} hash={table_hash} 没匹配到联系人，跳过")
+                        continue
                     
                     # 只保留私聊：wxid_ 开头或普通微信号（不含特殊标识）
                     # 排除：群聊(@chatroom)、公众号(gh_)、文件传输助手(filehelper)、系统账号(weixin等)
