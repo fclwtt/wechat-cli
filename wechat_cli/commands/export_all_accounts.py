@@ -9,13 +9,30 @@ from contextlib import closing
 from pathlib import Path
 from datetime import datetime
 
-# Windows CMD 强制 UTF-8 输出
+# Windows 强制 UTF-8（Python 3.7+ 环境变量方式）
 if sys.platform == 'win32':
+    os.environ['PYTHONUTF8'] = '1'
     try:
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
         sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     except:
         pass
+
+# 安全输出函数：替换无法编码的字符
+def safe_echo(msg, err=False):
+    """安全输出，Windows CMD 下替换 emoji 为问号"""
+    try:
+        click.echo(msg, err=err)
+    except UnicodeEncodeError:
+        # 用 UTF-8 编码，替换无法编码的字符为 '?'
+        safe_msg = msg.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+        try:
+            click.echo(safe_msg, err=err)
+        except UnicodeEncodeError:
+            # 最后保险：移除所有 emoji 和特殊字符
+            import re
+            clean_msg = re.sub(r'[\U00010000-\U0010ffff]', '', msg)
+            click.echo(clean_msg, err=err)
 
 from ..core.config import ACCOUNTS_DIR, ACCOUNTS_INDEX_FILE, list_accounts, load_account_config
 from ..core.db_cache import DBCache
@@ -121,7 +138,7 @@ def export_all_accounts(output_path, limit, max_chats, start_time, end_time, onl
         try:
             _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_time, end_time, only_active, active_since, active_since_ts, index_file, debug)
         except Exception as e:
-            click.echo(f"  导出失败: {e}", err=True)
+            safe_echo(f"  导出失败: {e}", err=True)
             if debug:
                 import traceback
                 traceback.print_exc()
@@ -407,7 +424,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
         # 如果 display_name 是表名(Msg_xxx)，显示 username
         if chat_name.startswith('Msg_'):
             chat_name = chat_info['username'] if not chat_info['username'].startswith('Msg_') else chat_name
-        click.echo(f"    [{i}/{len(chats)}] {chat_name}")
+        safe_echo(f"    [{i}/{len(chats)}] {chat_name}")
 
         try:
             step_start = time.time()
@@ -536,11 +553,11 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             
             chat_total = time.time() - chat_start
             if chat_total > 1.0:
-                click.echo(f"      [慢] 总耗时: {chat_total:.2f}s")
+                safe_echo(f"      [慢] 总耗时: {chat_total:.2f}s")
             export_times.append(chat_total)
 
         except Exception as e:
-            click.echo(f"      失败: {e}")
+            safe_echo(f"      失败: {e}")
             failed += 1
             if debug:
                 import traceback
