@@ -35,7 +35,7 @@ def safe_echo(msg, err=False):
 
 from ..core.config import ACCOUNTS_DIR, ACCOUNTS_INDEX_FILE, list_accounts, load_account_config
 from ..core.db_cache import DBCache
-from ..core.contacts import get_contact_names, get_self_username
+from ..core.contacts import get_contact_names, get_self_username, get_contact_detail
 from ..core.messages import resolve_chat_context, collect_chat_history, parse_time_range
 
 
@@ -330,6 +330,11 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                     if chat_username.startswith('gh_'):
                         debug_log(f"跳过公众号: {chat_username}")
                         continue
+                    
+                    # 跳过群聊（@chatroom）
+                    if '@chatroom' in chat_username:
+                        debug_log(f"跳过群聊: {chat_username}")
+                        continue
 
                     # 获取最新消息时间
                     try:
@@ -541,13 +546,20 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
 
             exported += 1
             
+            # 获取联系人详情（备注名+昵称）
+            contact_detail = get_contact_detail(chat_info['username'], cache, decrypted_dir)
+            remark = contact_detail.get('remark', '') if contact_detail else ''
+            nick_name = contact_detail.get('nick_name', '') if contact_detail else ''
+            
             # 记录导出的聊天文件夹名（用于索引）
-            # 格式: 账号名/文件夹名 | 最后消息时间 | 消息数
+            # 格式: 账号名/文件夹名 | 最后消息时间 | 消息数 | 备注名 | 昵称
             last_msg_time = datetime.fromtimestamp(chat_info['max_time']).strftime('%Y-%m-%d %H:%M')
             exported_chats.append({
                 'path': f"{wxid}/{safe_name}",
                 'last_msg_time': last_msg_time,
                 'count': chat_info['count'],
+                'remark': remark,
+                'nick_name': nick_name,
             })
             
             chat_total = time.time() - chat_start
@@ -574,7 +586,10 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
         mode = 'a' if index_path.exists() else 'w'
         with open(index_path, mode, encoding='utf-8') as f:
             for chat in exported_chats:
-                f.write(f"{chat['path']} | {chat['last_msg_time']} | {chat['count']}条\n")
+                # 格式: 账号/文件夹名 | 最后消息时间 | 消息数 | 备注名 | 昵称
+                remark_display = chat['remark'] if chat['remark'] else '(无备注)'
+                nick_display = chat['nick_name'] if chat['nick_name'] else '(无昵称)'
+                f.write(f"{chat['path']} | {chat['last_msg_time']} | {chat['count']}条 | {remark_display} | {nick_display}\n")
         click.echo(f"  索引: {index_file} ({len(exported_chats)} 个聊天)")
 
 
