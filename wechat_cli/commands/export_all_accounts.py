@@ -573,10 +573,11 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             nick_name = contact_detail.get('nick_name', '') if contact_detail else ''
             
             # 记录导出的聊天文件夹名（用于索引）
-            # 格式: 账号名/文件夹名 | 最后消息时间 | 消息数 | 备注名 | 昵称
+            # 格式: 账号名/文件夹名 | wxid | 最后消息时间 | 消息数 | 备注名 | 昵称
             last_msg_time = datetime.fromtimestamp(chat_info['max_time']).strftime('%Y-%m-%d %H:%M')
             exported_chats.append({
                 'path': f"{account_folder_name}/{safe_name}",
+                'wxid': chat_info['username'],
                 'last_msg_time': last_msg_time,
                 'count': chat_info['count'],
                 'remark': remark,
@@ -610,12 +611,12 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             # 新文件写入表头
             if is_new_file:
                 f.write("# 导出索引 - " + datetime.now().strftime('%Y-%m-%d') + "\n")
-                f.write("# 格式: 账号/文件夹名 | 最后消息时间 | 消息数 | 备注名 | 昵称\n")
+                f.write("# 格式: 账号/文件夹名 | wxid | 最后消息时间 | 消息数 | 备注名 | 昵称\n")
                 f.write("#" + "=" * 80 + "\n\n")
             for chat in exported_chats:
                 remark_display = chat['remark'] if chat['remark'] else '(无备注)'
                 nick_display = chat['nick_name'] if chat['nick_name'] else '(无昵称)'
-                f.write(f"{chat['path']} | {chat['last_msg_time']} | {chat['count']}条 | {remark_display} | {nick_display}\n")
+                f.write(f"{chat['path']} | {chat['wxid']} | {chat['last_msg_time']} | {chat['count']}条 | {remark_display} | {nick_display}\n")
         click.echo(f"  索引: {index_file} ({len(exported_chats)} 个聊天)")
 
 
