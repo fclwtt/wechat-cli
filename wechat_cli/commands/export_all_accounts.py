@@ -612,8 +612,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             for chat in exported_chats:
                 remark_display = chat['remark'] if chat['remark'] else '(无备注)'
                 nick_display = chat['nick_name'] if chat['nick_name'] else '(无昵称)'
-                f.write(f"{account_folder_name} | {chat['wxid']} | {remark_display} | {nick_display} | {chat['count']}条 | {chat['last_msg_time']}
-")
+                f.write(f"{account_folder_name} | {chat['wxid']} | {remark_display} | {nick_display} | {chat['count']}条 | {chat['last_msg_time']}\n")
         click.echo(f"  索引: {index_file} ({len(exported_chats)} 个聊天)")
 
 
