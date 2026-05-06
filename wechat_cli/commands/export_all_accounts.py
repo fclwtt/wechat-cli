@@ -466,13 +466,9 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
                 'self_username': self_username,
             }
 
-            # 创建聊天目录
-            folder_name = chat_info['display_name'] or chat_info['username']
-            # 如果是 Msg_xxx 表名，用 username 替换
-            if folder_name.startswith('Msg_') and not chat_info['username'].startswith('Msg_'):
-                folder_name = chat_info['username']
-            safe_name = folder_name.replace('/', '_').replace('\\', '_').replace(':', '_')
-            chat_dir = account_dir / safe_name
+            # 创建聊天目录（用 wxid 作为文件夹名，避免特殊字符导致 Syncthing 同步失败）
+            folder_name = chat_info['username']  # 直接用 wxid
+            chat_dir = account_dir / folder_name
             chat_dir.mkdir(parents=True, exist_ok=True)
 
             # 收集消息（使用已有函数）
@@ -546,7 +542,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             if html_time > 0.5:
                 click.echo(f"      [慢] 生成HTML耗时: {html_time:.2f}s")
 
-            html_path = chat_dir / f"{safe_name}.html"
+            html_path = chat_dir / f"{folder_name}.html"  # 用 wxid 作为文件名
             html_path.write_text(html_content, encoding="utf-8")
 
             # 生成 Markdown
@@ -562,7 +558,7 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             if md_time > 0.5:
                 click.echo(f"      [慢] 生成MD耗时: {md_time:.2f}s")
 
-            md_path = chat_dir / f"{safe_name}.md"
+            md_path = chat_dir / f"{folder_name}.md"  # 用 wxid 作为文件名
             md_path.write_text(md_content, encoding="utf-8")
 
             exported += 1
@@ -573,10 +569,10 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             nick_name = contact_detail.get('nick_name', '') if contact_detail else ''
             
             # 记录导出的聊天文件夹名（用于索引）
-            # 格式: 账号名/文件夹名 | wxid | 最后消息时间 | 消息数 | 备注名 | 昵称
+# 格式: 账号 | wxid | 备注名 | 昵称 | 消息数 | 最后消息时间
             last_msg_time = datetime.fromtimestamp(chat_info['max_time']).strftime('%Y-%m-%d %H:%M')
             exported_chats.append({
-                'path': f"{account_folder_name}/{safe_name}",
+                'path': f"{account_folder_name}/{folder_name}",
                 'wxid': chat_info['username'],
                 'last_msg_time': last_msg_time,
                 'count': chat_info['count'],
@@ -611,12 +607,13 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             # 新文件写入表头
             if is_new_file:
                 f.write("# 导出索引 - " + datetime.now().strftime('%Y-%m-%d') + "\n")
-                f.write("# 格式: 账号/文件夹名 | wxid | 最后消息时间 | 消息数 | 备注名 | 昵称\n")
+                f.write("# 格式: 账号 | wxid | 备注名 | 昵称 | 消息数 | 最后消息时间\n")
                 f.write("#" + "=" * 80 + "\n\n")
             for chat in exported_chats:
                 remark_display = chat['remark'] if chat['remark'] else '(无备注)'
                 nick_display = chat['nick_name'] if chat['nick_name'] else '(无昵称)'
-                f.write(f"{chat['path']} | {chat['wxid']} | {chat['last_msg_time']} | {chat['count']}条 | {remark_display} | {nick_display}\n")
+                f.write(f"{account_folder_name} | {chat['wxid']} | {remark_display} | {nick_display} | {chat['count']}条 | {chat['last_msg_time']}
+")
         click.echo(f"  索引: {index_file} ({len(exported_chats)} 个聊天)")
 
 
