@@ -605,24 +605,42 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
     click.echo(f"  成功: {exported} 个聊天")
     click.echo(f"  失败: {failed} 个聊天")
     
-    # 写入索引文件
+    # 写入索引文件（查漏补缺模式）
     if index_file and exported_chats:
         index_path = Path(index_file)
         index_path.parent.mkdir(parents=True, exist_ok=True)
-        # 判断是否新文件
-        is_new_file = not index_path.exists()
-        mode = 'a' if index_path.exists() else 'w'
-        with open(index_path, mode, encoding='utf-8') as f:
-            # 新文件写入表头
-            if is_new_file:
-                f.write("# 导出索引 - " + datetime.now().strftime('%Y-%m-%d') + "\n")
-                f.write("# 格式: 账号 | wxid | 备注名 | 昵称 | 消息数 | 最后消息时间\n")
-                f.write("#" + "=" * 80 + "\n\n")
-            for chat in exported_chats:
-                remark_display = chat['remark'] if chat['remark'] else '(无备注)'
-                nick_display = chat['nick_name'] if chat['nick_name'] else '(无昵称)'
-                f.write(f"{account_folder_name} | {chat['wxid']} | {remark_display} | {nick_display} | {chat['count']}条 | {chat['last_msg_time']}\n")
-        click.echo(f"  索引: {index_file} ({len(exported_chats)} 个聊天)")
+        
+        # 读取现有索引中的 wxid（用于查漏补缺）
+        existing_wxids = set()
+        if index_path.exists():
+            with open(index_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    # 解析格式: 账号 | wxid | ...
+                    parts = line.strip().split('|')
+                    if len(parts) >= 2 and not line.startswith('#'):
+                        wxid = parts[1].strip()
+                        if wxid:
+                            existing_wxids.add(wxid)
+        
+        # 只追加不在索引中的聊天
+        new_chats = [c for c in exported_chats if c['wxid'] not in existing_wxids]
+        
+        if new_chats:
+            is_new_file = not index_path.exists()
+            mode = 'a' if index_path.exists() else 'w'
+            with open(index_path, mode, encoding='utf-8') as f:
+                # 新文件写入表头
+                if is_new_file:
+                    f.write("# 导出索引 - " + datetime.now().strftime('%Y-%m-%d') + "\n")
+                    f.write("# 格式: 账号 | wxid | 备注名 | 昵称 | 消息数 | 最后消息时间\n")
+                    f.write("#" + "=" * 80 + "\n\n")
+                for chat in new_chats:
+                    remark_display = chat['remark'] if chat['remark'] else '(无备注)'
+                    nick_display = chat['nick_name'] if chat['nick_name'] else '(无昵称)'
+                    f.write(f"{account_folder_name} | {chat['wxid']} | {remark_display} | {nick_display} | {chat['count']}条 | {chat['last_msg_time']}\n")
+            click.echo(f"  索引: {index_file} (新增 {len(new_chats)} 个，已有 {len(existing_wxids)} 个)")
+        else:
+            click.echo(f"  索引: {index_file} (无新增，已全部登记)")
 
 
     return account_folder_name
