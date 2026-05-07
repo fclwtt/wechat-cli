@@ -24,8 +24,8 @@ set OUTPUT_DIR=E:\共享文件夹\wechat-chats-backup
 
 powershell -Command "Add-Content -Path '%LOG_FILE%' -Value '[STEP] Starting daily export...' -Encoding UTF8" >nul 2>&1
 
-REM Run daily export (--daily auto-calculates yesterday, generates index) - UTF-8 output
-"%~dp0wechat-cli.exe" export-all-accounts --output "%OUTPUT_DIR%" --daily 2>&1 | powershell -Command "$input | Add-Content -Path '%LOG_FILE%' -Encoding UTF8"
+REM Run daily export (--daily auto-calculates yesterday, skip existing) - UTF-8 output
+"%~dp0wechat-cli.exe" export-all-accounts --output "%OUTPUT_DIR%" --daily --skip-existing 2>&1 | powershell -Command "$input | Add-Content -Path '%LOG_FILE%' -Encoding UTF8"
 
 powershell -Command "Add-Content -Path '%LOG_FILE%' -Value '[DONE] Completed at %time%' -Encoding UTF8" >nul 2>&1
 exit /b 0
