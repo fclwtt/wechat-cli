@@ -471,9 +471,10 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             folder_name = chat_info['username']  # 直接用 wxid
             chat_dir = account_dir / folder_name
             
-            # 如果指定了 --skip-existing，检查 HTML 文件是否已存在
+            # 如果指定了 --skip-existing，检查 HTML + MD 文件是否都存在
             html_path = chat_dir / f"{folder_name}.html"
-            if skip_existing and html_path.exists():
+            md_path = chat_dir / f"{folder_name}.md"
+            if skip_existing and html_path.exists() and md_path.exists():
                 safe_echo(f"      跳过: 已存在")
                 continue
             
