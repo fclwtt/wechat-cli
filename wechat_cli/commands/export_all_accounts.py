@@ -49,8 +49,9 @@ from ..core.messages import resolve_chat_context, collect_chat_history, parse_ti
 @click.option("--active-since", default=None, help="筛选指定日期有消息的聊天，但导出全部历史 (YYYY-MM-DD)，如 --active-since 2026-04-15")
 @click.option("--daily", is_flag=True, help="每日导出模式：自动计算昨天日期，等同于 --active-since YESTERDAY")
 @click.option("--index-file", default=None, help="索引文件路径，记录导出的聊天列表")
+@click.option("--skip-existing", is_flag=True, help="跳过已存在的聊天（HTML 文件已存在则不重新生成）")
 @click.option("--debug", is_flag=True, help="显示详细调试信息")
-def export_all_accounts(output_path, limit, max_chats, start_time, end_time, only_active, active_since, daily, index_file, debug):
+def export_all_accounts(output_path, limit, max_chats, start_time, end_time, only_active, active_since, daily, index_file, skip_existing, debug):
     """导出所有账号的聊天记录为 HTML 页面（纯文字版）
 
     \b
@@ -469,6 +470,13 @@ def _export_account(wxid, output_dir, limit, max_chats, start_ts, end_ts, start_
             # 创建聊天目录（用 wxid 作为文件夹名，避免特殊字符导致 Syncthing 同步失败）
             folder_name = chat_info['username']  # 直接用 wxid
             chat_dir = account_dir / folder_name
+            
+            # 如果指定了 --skip-existing，检查 HTML 文件是否已存在
+            html_path = chat_dir / f"{folder_name}.html"
+            if skip_existing and html_path.exists():
+                safe_echo(f"      跳过: 已存在")
+                continue
+            
             chat_dir.mkdir(parents=True, exist_ok=True)
 
             # 收集消息（使用已有函数）
