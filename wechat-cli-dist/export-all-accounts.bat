@@ -24,8 +24,8 @@ echo.
 echo Exporting all chat records from all accounts (full history)...
 echo.
 
-REM Run export command (multi-account, text-only, new HTML style, no limits)
-"%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%"
+REM Run export command (multi-account, text-only, new HTML style, skip existing)
+"%CLI_PATH%" export-all-accounts --output "%OUTPUT_DIR%" --skip-existing
 
 echo.
 echo Export Complete!
